@@ -1,6 +1,7 @@
 module Arduino.Util
 
 import Data.Vect
+import Data.Vect.Quantifiers
 
 %default total
 %access public export
@@ -9,21 +10,32 @@ import Data.Vect
 --- Type-level massive disjunctions and conjunctions ---
 --------------------------------------------------------
 
-data OneOf : Vect n Type -> Type where
-  MkOneOf : {types : Vect n Type} -> (idx : Fin n) -> index idx types -> OneOf types
+namespace Logic
 
-data AllOf : Vect n Type -> Type where
-  Nil  :                               AllOf []
-  (::) : {x : Type} -> x -> AllOf v -> AllOf (x::v)
+  data OneOf : Vect n Type -> Type where
+    MkOneOf : (idx : Fin n) -> index idx types -> OneOf types
 
-------------------------------------------------------
---- Special dependent pairs with nice constructors ---
-------------------------------------------------------
+  data AllOf : Vect n Type -> Type where
+    Nil  :                               AllOf []
+    (::) : {x : Type} -> x -> AllOf v -> AllOf (x::v)
+
+----------------------------------------------
+--- Additional quantifiers for collections ---
+----------------------------------------------
+
+namespace Quantif
+
+  data AllDiffer : Vect n a -> Type where
+    Nil  : AllDiffer []
+    (::) : {xs : Vect n a} -> (x : a) -> {auto ev : All (Not . \u => u = x) xs} -> AllDiffer xs -> AllDiffer (x::xs)
+
+----------------------------------
+--- "Easier constructor" stuff ---
+----------------------------------
 
 -- Dependent pair `(x : a ** guarantee x)` with `auto` `guarantee` parameter in constructor.
-data BoundedWith : (a : Type) -> (a -> Type) -> Type where
-  MkBounded : {guarantee : a -> Type} -> (x : a) -> {auto ev : guarantee x} -> a `BoundedWith` guarantee
+data That : (a : Type) -> (a -> Type) -> Type where
+  Bounded : (x : a) -> {auto ev : prop x} -> a `That` prop
 
--- Dependent pair `(n : Nat ** Vect n a)` with implicit size in constructor.
-data KnownCountOf : Type -> Type where
-  MkKnownCountOf : {n : Nat} -> Vect n a -> KnownCountOf a
+SummonAuto : {auto a : t} -> t
+SummonAuto {a} = a
