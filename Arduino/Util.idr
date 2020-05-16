@@ -19,6 +19,15 @@ namespace Logic
     Nil  :                               AllOf []
     (::) : {x : Type} -> x -> AllOf v -> AllOf (x::v)
 
+  -- Curry-Howard coding of a short-circuiting conjunction
+  data AndThen : (l : Type) -> (r : l -> Type) -> Type where
+    ShortConj : (v : l) -> (w : r v) -> l `AndThen` r
+
+  -- Short-circuting disjunction
+  data OrElse : (l : Type) -> (r : (l -> Void) -> Type) -> Type where
+    MkLeft  :                      (v : l)     -> l `OrElse` r
+    MkRight : (noL : l -> Void) -> (w : r noL) -> l `OrElse` r
+
 ----------------------------------------------
 --- Additional quantifiers for collections ---
 ----------------------------------------------
@@ -37,5 +46,21 @@ namespace Quantif
 data That : (a : Type) -> (a -> Type) -> Type where
   Bounded : (x : a) -> {auto ev : prop x} -> a `That` prop
 
+Debounded : a `That` prop -> a
+Debounded (Bounded x) = x
+
 SummonAuto : {auto a : t} -> t
 SummonAuto {a} = a
+
+-------------------
+--- Combinators ---
+-------------------
+
+infixr 9 .., ...
+
+-- Beloved "blackbird" combinator
+(..) : (c -> d) -> (a -> b -> c) -> a -> b -> d
+(..) = (.) . (.)
+
+(...) : (d -> e) -> (a -> b -> c -> d) -> a -> b -> c -> e
+(...) = (.) . (..)
