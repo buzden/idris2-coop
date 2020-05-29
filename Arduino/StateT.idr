@@ -17,11 +17,11 @@ data StateT : Type -> (Type -> Type) -> Type -> Type where
 -----------------
 
 export
-runStateT : StateT s m a -> s -> m (a, s)
-runStateT (MkStateT f) = f
+runStateT : s -> StateT s m a -> m (a, s)
+runStateT s (MkStateT f) = f s
 
 export
-evalStateT : Functor m => StateT s m a -> s -> m a
+evalStateT : Functor m => s -> StateT s m a -> m a
 evalStateT = map fst .. runStateT
 
 export
