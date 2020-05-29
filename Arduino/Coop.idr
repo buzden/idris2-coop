@@ -66,11 +66,18 @@ export
 Timed m => Timed (Coop m) where
   millis = Point millis
 
+infixl 4 $>
+
+($>) : Applicative m => Coop m a -> b -> Coop m b
+(Point _)        $> b = Point $ pure b
+(Sequential a f) $> b = Sequential a $ \ar => f ar $> b
+x                $> b = Sequential x . const . Point $ pure b
+
 export
 Applicative m => Functor (Coop m) where
   map f (Point a)           = Point (map f a)
   map f (Sequential a b)    = Sequential a $ \ar => map f $ b ar
-  map f x@(Cooperative _ _) = Sequential x $ Point . pure . f
+  map f x@(Cooperative _ _) = x $> f ()
   map f (DelayedTill t a)   = DelayedTill t $ map f a
 
 export
