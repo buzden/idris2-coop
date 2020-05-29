@@ -2,6 +2,8 @@ module Arduino.Coop
 
 import Arduino.Util
 
+import Control.Monad.Syntax
+
 %default total
 
 -------------
@@ -27,17 +29,16 @@ interface Parallel (m : Type -> Type) where
   (<|>) : m a -> m b -> m ()
 
 public export
-interface DelayableTill (m : Type -> Type) where
-  delayedTill : Millis -> m a -> m a
-  -- TODO Maybe, swap the arguments to make this be used better as infix operator?
+interface Monad m => DelayableTill (m : Type -> Type) where
+  delayTill : Millis -> m ()
 
 public export
-interface DelayableFor (m : Type -> Type) where
-  delayedFor : Millis -> m a -> m a
+interface Monad m => DelayableFor (m : Type -> Type) where
+  delay : Millis -> m ()
 
 export
-(Timed m, DelayableTill m, Monad m) => DelayableFor m where
-  delayedFor t a = millis >>= \m => delayedTill (m + t) a
+(Timed m, DelayableTill m) => DelayableFor m where
+  delay t = delayTill . (+t) =<< millis
 
 ------------
 --- Data ---
@@ -48,7 +49,7 @@ data Coop : (m : Type -> Type) -> (a : Type) -> Type where
   Point       : m a -> Coop m a
   Sequential  : Coop m a -> (a -> Coop m b) -> Coop m b
   Cooperative : Coop m a -> Coop m b -> Coop m ()
-  DelayedTill : Millis -> Coop m a -> Coop m a
+  DelayedTill : Millis -> Coop m ()
 
 -------------------
 --- Interpreter ---
@@ -78,7 +79,7 @@ Applicative m => Functor (Coop m) where
   map f (Point a)           = Point (map f a)
   map f (Sequential a b)    = Sequential a $ \ar => map f $ b ar
   map f x@(Cooperative _ _) = x $> f ()
-  map f (DelayedTill t a)   = DelayedTill t $ map f a
+  map f x@(DelayedTill t)   = x $> f ()
 
 export
 Applicative m => Applicative (Coop m) where
@@ -97,5 +98,5 @@ Parallel (Coop m) where
   (<|>) = Cooperative
 
 export
-Timed m => DelayableTill (Coop m) where
-  delayedTill = DelayedTill
+(Timed m, Monad m) => DelayableTill (Coop m) where
+  delayTill = DelayedTill
