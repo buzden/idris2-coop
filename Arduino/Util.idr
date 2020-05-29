@@ -64,3 +64,13 @@ infixr 9 .., ...
 
 (...) : (d -> e) -> (a -> b -> c -> d) -> a -> b -> c -> e
 (...) = (.) . (..)
+
+--- Functor stuff ---
+
+unit : Functor f => f a -> f ()
+unit = map $ const ()
+
+infixl 4 $>
+
+($>) : Functor f => f a -> b -> f b
+f $> b = map (const b) f

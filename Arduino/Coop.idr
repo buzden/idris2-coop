@@ -1,5 +1,6 @@
 module Arduino.Coop
 
+import Arduino.StateT
 import Arduino.Util
 
 import Control.Monad.Syntax
@@ -51,14 +52,6 @@ data Coop : (m : Type -> Type) -> (a : Type) -> Type where
   Cooperative : Coop m a -> Coop m b -> Coop m ()
   DelayedTill : Millis -> Coop m ()
 
--------------------
---- Interpreter ---
--------------------
-
-export
-runCoop : (Monad m, Timed m) => Coop m a -> m a
-runCoop co = ?runCoop_rhs
-
 -----------------------
 --- Implementations ---
 -----------------------
@@ -100,3 +93,33 @@ Parallel (Coop m) where
 export
 (Timed m, Monad m) => DelayableTill (Coop m) where
   delayTill = DelayedTill
+
+-------------------
+--- Interpreter ---
+-------------------
+
+export covering
+runCoop : (Monad m, Timed m) => Coop m a -> m ()
+runCoop co = evalStateT [(_ ** co)] runLeftEvents where
+
+  -- TODO to add time and to implement `Ord Event`
+  Event : Type
+  Event = (x : Type ** Coop m x)
+
+  -- TODO to replace list with a sortedness-preserving kinda-list
+  covering
+  runLeftEvents : Monad m => StateT (List Event) m ()
+  runLeftEvents = do (currEv::restEvs) <- the (StateT (List Event) m (List Event)) get | [] => pure ()
+                     newEvs <- lift $ runEvent currEv
+                     put $ restEvs ++ newEvs -- TODO to replace `++` with sortedness-preserving addition
+                     runLeftEvents
+    where
+    runEvent : Event -> m (List Event) -- returns new events as the result of running
+    runEvent (_ ** Point x)         = x $> Nil
+    runEvent (_ ** Cooperative l r) = pure [(_ ** l), (_ ** r)]
+    runEvent (_ ** DelayedTill _)   = pure Nil
+    runEvent (_ ** Sequential x f)  = case x of
+      Point y         => map (\r => [(_ ** f r)]) y
+      Sequential y g  => pure [(_ ** Sequential y (g >=> f))]
+      Cooperative l r => ?runEvent_sequential_rhs_3 -- TODO to wait for both subexecutions, maybe additional info is needed to be added to the state
+      DelayedTill d   => ?runEvent_sequential_rhs_4
