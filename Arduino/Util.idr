@@ -52,6 +52,18 @@ Debounded (Bounded x) = x
 SummonAuto : {auto a : t} -> t
 SummonAuto {a} = a
 
+-------------
+--- Lists ---
+-------------
+
+-- If two input lists were sorted, the resulted one should too, containing all elements from both
+mergeSorted : Ord a => List a -> List a -> List a
+mergeSorted [] rs = rs
+mergeSorted ls [] = ls
+mergeSorted ll@(l::ls) rr@(r::rs) = if (l <= r)
+                                      then l :: mergeSorted ls rr
+                                      else r :: mergeSorted ll rs
+
 -------------------
 --- Combinators ---
 -------------------

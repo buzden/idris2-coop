@@ -98,28 +98,35 @@ export
 --- Interpreter ---
 -------------------
 
+data Event : (Type -> Type) -> Type where
+  Ev : (t : Millis) -> Coop m x -> Event m
+
+-- The following comparison is only according to the time; this will incorrectly work for sets.
+-- Equally timed events with different actions are considered to be equal with `==` relation.
+Eq (Event m) where
+  (Ev tl _) == (Ev tr _) = tl == tr
+
+Ord (Event m) where
+  compare (Ev tl _) (Ev tr _) = tl `compare` tr
+
 export covering
 runCoop : (Monad m, Timed m) => Coop m a -> m ()
-runCoop co = evalStateT [(_ ** co)] runLeftEvents where
-
-  -- TODO to add time and to implement `Ord Event`
-  Event : Type
-  Event = (x : Type ** Coop m x)
+runCoop co = evalStateT [Ev !millis co] runLeftEvents where
 
   -- TODO to replace list with a sortedness-preserving kinda-list
   covering
-  runLeftEvents : Monad m => StateT (List Event) m ()
-  runLeftEvents = do (currEv::restEvs) <- the (StateT (List Event) m (List Event)) get | [] => pure ()
+  runLeftEvents : Monad m => StateT (List $ Event m) m ()
+  runLeftEvents = do (currEv::restEvs) <- the (StateT (List $ Event m) m (List $ Event m)) get | [] => pure ()
                      newEvs <- lift $ runEvent currEv
-                     put $ restEvs ++ newEvs -- TODO to replace `++` with sortedness-preserving addition
+                     put $ mergeSorted restEvs newEvs
                      runLeftEvents
     where
-    runEvent : Event -> m (List Event) -- returns new events as the result of running
-    runEvent (_ ** Point x)         = x $> Nil
-    runEvent (_ ** Cooperative l r) = pure [(_ ** l), (_ ** r)]
-    runEvent (_ ** DelayedTill _)   = pure Nil
-    runEvent (_ ** Sequential x f)  = case x of
-      Point y         => map (\r => [(_ ** f r)]) y
-      Sequential y g  => pure [(_ ** Sequential y (g >=> f))]
+    runEvent : Event m -> m (List $ Event m) -- returns new events as the result of running
+    runEvent (Ev _ (Point x))         = x $> Nil
+    runEvent (Ev t (Cooperative l r)) = pure [Ev t l, Ev t r]
+    runEvent (Ev _ (DelayedTill _))   = pure Nil
+    runEvent (Ev t (Sequential x f))  = case x of
+      Point y         => map (\r => [Ev t $ f r]) y
+      Sequential y g  => pure [Ev t . Sequential y $ g >=> f]
+      DelayedTill d   => pure [Ev d $ f ()]
       Cooperative l r => ?runEvent_sequential_rhs_3 -- TODO to wait for both subexecutions, maybe additional info is needed to be added to the state
-      DelayedTill d   => ?runEvent_sequential_rhs_4
