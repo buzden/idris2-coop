@@ -117,8 +117,12 @@ runCoop co = evalStateT [Ev !millis co] runLeftEvents where
   covering
   runLeftEvents : Monad m => StateT (List $ Event m) m ()
   runLeftEvents = do (currEv::restEvs) <- the (StateT (List $ Event m) m (List $ Event m)) get | [] => pure ()
-                     newEvs <- lift $ runEvent currEv
-                     put $ mergeSorted restEvs newEvs
+                     let Ev currEvTime _ = currEv
+                     currTime <- lift millis
+                     when (currEvTime >= currTime) $ do
+                       newEvs <- lift $ runEvent currEv
+                       put $ mergeSorted restEvs newEvs
+                     -- TODO else wait for the `currEvTime - currTime`; or support and perform permanent tasks
                      runLeftEvents
     where
     runEvent : Event m -> m (List $ Event m) -- returns new events as the result of running
