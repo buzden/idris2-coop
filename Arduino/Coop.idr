@@ -98,39 +98,56 @@ export
 --- Interpreter ---
 -------------------
 
+Sync : Type
+Sync = Nat
+
 data Event : (Type -> Type) -> Type where
-  Ev : (t : Millis) -> Coop m x -> Event m
+  Ev : (t : Millis) -> Coop m x -> List (Sync, (y : Type ** Coop m y)) -> Event m
 
 -- The following comparison is only according to the time; this will incorrectly work for sets.
 -- Equally timed events with different actions are considered to be equal with `==` relation.
 Eq (Event m) where
-  (Ev tl _) == (Ev tr _) = tl == tr
+  (Ev tl _ _) == (Ev tr _ _) = tl == tr
 
 Ord (Event m) where
-  compare (Ev tl _) (Ev tr _) = tl `compare` tr
+  compare (Ev tl _ _) (Ev tr _ _) = tl `compare` tr
 
 export covering
 runCoop : (Monad m, Timed m) => Coop m a -> m ()
-runCoop co = evalStateT [Ev !millis co] runLeftEvents where
+runCoop co = evalStateT [Ev !millis co []] runLeftEvents where
 
   -- TODO to replace list with a sortedness-preserving kinda-list
   covering
   runLeftEvents : Monad m => StateT (List $ Event m) m ()
   runLeftEvents = do (currEv::restEvs) <- the (StateT (List $ Event m) m (List $ Event m)) get | [] => pure ()
-                     let Ev currEvTime _ = currEv
+                     let Ev currEvTime _ postponed = currEv
                      currTime <- lift millis
                      when (currEvTime >= currTime) $ do
-                       newEvs <- lift $ runEvent currEv
-                       put $ mergeSorted restEvs newEvs
+                       newEvs <- lift . runEvent currEv $ uniqueSync $ currEv::restEvs
+                       let newLeftEvs = mergeSorted restEvs newEvs
+                       let newLeftSyncs = syncs newLeftEvs
+                       let postponedWithNoSyncLeft = filter (not . flip elem newLeftSyncs . fst) postponed
+                       let awakened = map (\(_, (_ ** coop)) => Ev currEvTime coop []) postponedWithNoSyncLeft
+                       put $ mergeSorted newLeftEvs awakened
                      -- TODO else wait for the `currEvTime - currTime`; or support and perform permanent tasks
                      runLeftEvents
     where
-    runEvent : Event m -> m (List $ Event m) -- returns new events as the result of running
-    runEvent (Ev _ (Point x))         = x $> Nil
-    runEvent (Ev t (Cooperative l r)) = pure [Ev t l, Ev t r]
-    runEvent (Ev _ (DelayedTill _))   = pure Nil
-    runEvent (Ev t (Sequential x f))  = case x of
-      Point y         => map (\r => [Ev t $ f r]) y
-      Sequential y g  => pure [Ev t . Sequential y $ g >=> f]
-      DelayedTill d   => pure [Ev d $ f ()]
-      Cooperative l r => ?runEvent_sequential_rhs_3 -- TODO to wait for both subexecutions, maybe additional info is needed to be added to the state
+    runEvent : Event m -> Lazy Sync -> m (List $ Event m) -- returns new events as the result of running
+    runEvent (Ev _ (Point x)         _) _       = x $> Nil
+    runEvent (Ev t (Cooperative l r) p) _       = pure [Ev t l p, Ev t r p]
+    runEvent (Ev _ (DelayedTill d)   p) _       = pure [Ev d (Point $ pure ()) p] -- this enables `p` to be run when appropriate (delayed)
+    runEvent (Ev t (Sequential x f)  p) newSync = case x of
+      Point y         => map (\r => [Ev t (f r) p]) y
+      Sequential y g  => pure [Ev t (Sequential y $ g >=> f) p]
+      DelayedTill d   => pure [Ev d (f ()) p]
+      Cooperative l r => let extP = (Force newSync, (_ ** f ()))::p in pure [Ev t l extP, Ev t r extP]
+
+    syncs : List (Event m) -> List Sync
+    syncs evs = evs >>= \(Ev _ _ postponed) => map fst postponed
+
+    uniqueSync : List (Event m) -> Sync
+    uniqueSync = f . syncs where
+      f [] = 0
+      f ss@(t::ts) = case foldl min t ts of
+        S x => x                  -- either minimal minus 1
+        Z   => S $ foldl max 0 ss -- or maximal plus 1
