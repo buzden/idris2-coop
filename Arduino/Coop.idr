@@ -124,11 +124,11 @@ runCoop co = evalStateT [Ev !millis co []] runLeftEvents where
                      currTime <- lift millis
                      when (currEvTime >= currTime) $ do
                        newEvs <- lift . runEvent currEv $ uniqueSync $ currEv::restEvs
-                       let newLeftEvs = mergeSorted restEvs newEvs
+                       let newLeftEvs = merge restEvs newEvs
                        let newLeftSyncs = syncs newLeftEvs
                        let postponedWithNoSyncLeft = filter (not . flip elem newLeftSyncs . fst) postponed
                        let awakened = map (\(_, (_ ** coop)) => Ev currEvTime coop []) postponedWithNoSyncLeft
-                       put $ mergeSorted newLeftEvs awakened
+                       put $ merge newLeftEvs awakened
                      -- TODO else wait for the `currEvTime - currTime`; or support and perform permanent tasks
                      runLeftEvents
     where
