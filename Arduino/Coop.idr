@@ -12,8 +12,8 @@ import Control.Monad.Syntax
 
 -- TODO to make this type be nicer
 public export
-Millis : Type
-Millis = Nat
+Time : Type
+Time = Nat
 
 ------------------
 --- Interfaces ---
@@ -21,7 +21,7 @@ Millis = Nat
 
 public export
 interface Timed (m : Type -> Type) where
-  millis : m Millis
+  currentTime : m Time
 
 public export
 interface Parallel (m : Type -> Type) where
@@ -30,15 +30,15 @@ interface Parallel (m : Type -> Type) where
 
 public export
 interface Monad m => DelayableTill (m : Type -> Type) where
-  delayTill : Millis -> m ()
+  delayTill : Time -> m ()
 
 public export
 interface Monad m => DelayableFor (m : Type -> Type) where
-  delay : Millis -> m ()
+  delay : Time -> m ()
 
 export
 (Timed m, DelayableTill m) => DelayableFor m where
-  delay t = delayTill . (+t) =<< millis
+  delay t = delayTill . (+t) =<< currentTime
 
 ------------
 --- Data ---
@@ -49,7 +49,7 @@ data Coop : (m : Type -> Type) -> (a : Type) -> Type where
   Point       : m a -> Coop m a
   Sequential  : Coop m a -> (a -> Coop m b) -> Coop m b
   Cooperative : Coop m a -> Coop m b -> Coop m ()
-  DelayedTill : Millis -> Coop m ()
+  DelayedTill : Time -> Coop m ()
 
 -----------------------
 --- Implementations ---
@@ -57,7 +57,7 @@ data Coop : (m : Type -> Type) -> (a : Type) -> Type where
 
 export
 Timed m => Timed (Coop m) where
-  millis = Point millis
+  currentTime = Point currentTime
 
 infixl 4 $>
 
@@ -101,7 +101,7 @@ Sync : Type
 Sync = Nat
 
 data Event : (Type -> Type) -> Type where
-  Ev : (t : Millis) -> Coop m x -> List (Sync, (y : Type ** Coop m y)) -> Event m
+  Ev : (t : Time) -> Coop m x -> List (Sync, (y : Type ** Coop m y)) -> Event m
 
 -- The following comparison is only according to the time; this will incorrectly work for sets.
 -- Equally timed events with different actions are considered to be equal with `==` relation.
@@ -113,21 +113,20 @@ Ord (Event m) where
 
 export covering
 runCoop : (Monad m, Timed m) => Coop m a -> m ()
-runCoop co = runLeftEvents [Ev !millis co []] where
+runCoop co = runLeftEvents [Ev !currentTime co []] where
 
   -- TODO to replace list with a sortedness-preserving kinda-list
   covering
   runLeftEvents : List $ Event m -> m ()
   runLeftEvents [] = pure ()
   runLeftEvents evs@((Ev currEvTime currCoop postponed)::restEvs) = do
-    currTime <- millis
-    nextEvs <- if currEvTime >= currTime
+    nextEvs <- if currEvTime >= !currentTime
                then do
                  newEvs <- runCurrEvent
                  let newLeftEvs = merge restEvs newEvs
                  pure $ merge newLeftEvs $ awakened newLeftEvs
                else
-                 -- TODO else wait for the `currEvTime - currTime`; or support and perform permanent tasks
+                 -- TODO else wait for the `currEvTime - !currentTime`; or support and perform permanent tasks
                  pure evs
     runLeftEvents nextEvs
 
