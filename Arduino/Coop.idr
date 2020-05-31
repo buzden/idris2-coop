@@ -115,6 +115,18 @@ export covering
 runCoop : (Monad m, Timed m) => Coop m a -> m ()
 runCoop co = runLeftEvents [Ev !millis co []] where
 
+  runEvent : Event m -> Lazy Sync -> m (List $ Event m) -- returns new events as the result of running
+  runEvent (Ev _ (Point x)         _) _       = x $> Nil
+  runEvent (Ev t (Cooperative l r) p) _       = pure [Ev t l p, Ev t r p]
+  runEvent (Ev _ (DelayedTill d)   p) _       = pure [Ev d (Point $ pure ()) p] -- this enables `p` to be run when appropriate (delayed)
+        -- (Ev t c@(DelayedTill _) p) _       = pure [Ev t (Sequential c . const . Point $ pure ()) p] -- the same written as a rewriting rule
+  runEvent (Ev t (Sequential x f)  p) newSync = case x of
+    Point y         => map (\r => [Ev t (f r) p]) y
+    Sequential y g  => pure [Ev t (Sequential y $ g >=> f) p]
+    DelayedTill d   => pure [Ev d (f ()) p]
+    Cooperative l r => let extP = (Force newSync, (_ ** f ()))::p in
+                       pure [Ev t l extP, Ev t r extP]
+
   -- TODO to replace list with a sortedness-preserving kinda-list
   covering
   runLeftEvents : List $ Event m -> m ()
@@ -123,7 +135,7 @@ runCoop co = runLeftEvents [Ev !millis co []] where
     currTime <- millis
     nextEvs <- if currEvTime >= currTime
                then do
-                 newEvs <- runEvent currEv
+                 newEvs <- runEvent currEv uniqueSync
                  let newLeftEvs = merge restEvs newEvs
                  let newLeftSyncs = syncs newLeftEvs
                  let postponedWithNoSyncLeft = filter (not . flip elem newLeftSyncs . fst) postponed
@@ -144,15 +156,3 @@ runCoop co = runLeftEvents [Ev !millis co []] where
       ss@(t::ts) => case foldl min t ts of
         S x => x                  -- either minimal minus 1
         Z   => S $ foldl max 0 ss -- or maximal plus 1
-
-    runEvent : Event m -> m (List $ Event m) -- returns new events as the result of running
-    runEvent (Ev _ (Point x)         _) = x $> Nil
-    runEvent (Ev t (Cooperative l r) p) = pure [Ev t l p, Ev t r p]
-    runEvent (Ev _ (DelayedTill d)   p) = pure [Ev d (Point $ pure ()) p] -- this enables `p` to be run when appropriate (delayed)
-          -- (Ev t c@(DelayedTill _) p) = pure [Ev t (Sequential c . const . Point $ pure ()) p] -- the same written as a time-preserving rewriting rule
-    runEvent (Ev t (Sequential x f)  p) = case x of
-      Point y         => map (\r => [Ev t (f r) p]) y
-      Sequential y g  => pure [Ev t (Sequential y $ g >=> f) p]
-      DelayedTill d   => pure [Ev d (f ()) p]
-      Cooperative l r => let extP = (Force uniqueSync, (_ ** f ()))::p in
-                         pure [Ev t l extP, Ev t r extP]
