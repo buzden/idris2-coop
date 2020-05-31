@@ -147,12 +147,11 @@ runCoop co = runLeftEvents [Ev !millis co []] where
 
     runCurrEvent : m (List $ Event m) -- returns new events as the result of running
     runCurrEvent = case currCoop of
-      Point x         => x $> Nil
-      Cooperative l r => pure [Ev currEvTime l postponed, Ev currEvTime r postponed]
-      DelayedTill d   => pure [Ev d (Point $ pure ()) postponed] -- this enables `p` to be run when appropriate (delayed)
-      Sequential x f  => case x of
-        Point y         => map (\r => [Ev currEvTime (f r) postponed]) y
-        Sequential y g  => pure [Ev currEvTime (Sequential y $ g >=> f) postponed]
-        DelayedTill d   => pure [Ev d (f ()) postponed]
-        Cooperative l r => let extP = (Force uniqueSync, (_ ** f ()))::postponed in
-                           pure [Ev currEvTime l extP, Ev currEvTime r extP]
+      Point x                        => x $> Nil
+      Cooperative l r                => pure [Ev currEvTime l postponed, Ev currEvTime r postponed]
+      DelayedTill d                  => pure [Ev d (Point $ pure ()) postponed] -- this enables postponed to be run when appropriate (delayed)
+      Sequential (Point y)         f => map (\r => [Ev currEvTime (f r) postponed]) y
+      Sequential (Sequential y g)  f => pure [Ev currEvTime (Sequential y $ g >=> f) postponed]
+      Sequential (DelayedTill d)   f => pure [Ev d (f ()) postponed]
+      Sequential (Cooperative l r) f => let extP = (Force uniqueSync, (_ ** f ()))::postponed in
+                                        pure [Ev currEvTime l extP, Ev currEvTime r extP]
