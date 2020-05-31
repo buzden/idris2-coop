@@ -1,6 +1,5 @@
 module Arduino.Coop
 
-import Arduino.StateT
 import Arduino.Util
 
 import Control.Monad.Syntax
@@ -114,23 +113,27 @@ Ord (Event m) where
 
 export covering
 runCoop : (Monad m, Timed m) => Coop m a -> m ()
-runCoop co = evalStateT [Ev !millis co []] runLeftEvents where
+runCoop co = runLeftEvents [Ev !millis co []] where
 
   -- TODO to replace list with a sortedness-preserving kinda-list
   covering
-  runLeftEvents : Monad m => StateT (List $ Event m) m ()
-  runLeftEvents = do (currEv::restEvs) <- the (StateT (List $ Event m) m (List $ Event m)) get | [] => pure ()
+  runLeftEvents : Monad m => List $ Event m -> m ()
+  runLeftEvents [] = pure ()
+  runLeftEvents evs@(currEv::restEvs) = do
                      let Ev currEvTime _ postponed = currEv
-                     currTime <- lift millis
-                     when (currEvTime >= currTime) $ do
-                       newEvs <- lift . runEvent currEv $ uniqueSync $ currEv::restEvs
+                     currTime <- millis
+                     nextEvs <- if currEvTime >= currTime
+                     then do
+                       newEvs <- runEvent currEv $ uniqueSync evs
                        let newLeftEvs = merge restEvs newEvs
                        let newLeftSyncs = syncs newLeftEvs
                        let postponedWithNoSyncLeft = filter (not . flip elem newLeftSyncs . fst) postponed
                        let awakened = map (\(_, (_ ** coop)) => Ev currEvTime coop []) postponedWithNoSyncLeft
-                       put $ merge newLeftEvs awakened
-                     -- TODO else wait for the `currEvTime - currTime`; or support and perform permanent tasks
-                     runLeftEvents
+                       pure $ merge newLeftEvs awakened
+                     else
+                       -- TODO else wait for the `currEvTime - currTime`; or support and perform permanent tasks
+                       pure evs
+                     runLeftEvents nextEvs
     where
     runEvent : Event m -> Lazy Sync -> m (List $ Event m) -- returns new events as the result of running
     runEvent (Ev _ (Point x)         _) _       = x $> Nil
