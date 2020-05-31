@@ -125,10 +125,7 @@ runCoop co = runLeftEvents [Ev !millis co []] where
                then do
                  newEvs <- runCurrEvent
                  let newLeftEvs = merge restEvs newEvs
-                 let newLeftSyncs = syncs newLeftEvs
-                 let postponedWithNoSyncLeft = filter (not . flip elem newLeftSyncs . fst) postponed
-                 let awakened = map (\(_, (_ ** coop)) => Ev currEvTime coop []) postponedWithNoSyncLeft
-                 pure $ merge newLeftEvs awakened
+                 pure $ merge newLeftEvs $ awakened newLeftEvs
                else
                  -- TODO else wait for the `currEvTime - currTime`; or support and perform permanent tasks
                  pure evs
@@ -155,3 +152,7 @@ runCoop co = runLeftEvents [Ev !millis co []] where
       Sequential (DelayedTill d)   f => pure [Ev d (f ()) postponed]
       Sequential (Cooperative l r) f => let extP = (Force uniqueSync, (_ ** f ()))::postponed in
                                         pure [Ev currEvTime l extP, Ev currEvTime r extP]
+
+    awakened : (evsAfterCurr : List $ Event m) -> List $ Event m
+    awakened evsAfterCurr = let newLeftSyncs = syncs evsAfterCurr in
+      map (\(_, (_ ** coop)) => Ev currEvTime coop []) . filter (not . flip elem newLeftSyncs . fst) $ postponed
