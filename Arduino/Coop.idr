@@ -36,10 +36,6 @@ public export
 interface Monad m => DelayableFor (m : Type -> Type) where
   delay : Time -> m ()
 
-export
-(Timed m, DelayableTill m) => DelayableFor m where
-  delay t = delayTill . (+t) =<< currentTime
-
 ------------
 --- Data ---
 ------------
@@ -104,6 +100,10 @@ Parallel (Coop m) where
 export
 (Timed m, Monad m) => DelayableTill (Coop m) where
   delayTill = DelayedTill
+
+export
+(Timed m, Monad m) => DelayableFor (Coop m) where
+  delay t = delayTill . (+t) =<< currentTime
 
 -------------------
 --- Interpreter ---
