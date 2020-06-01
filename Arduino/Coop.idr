@@ -122,8 +122,7 @@ runCoop co = runLeftEvents [Ev !currentTime co []] where
   runLeftEvents evs@((Ev currEvTime currCoop postponed)::restEvs) = do
     nextEvs <- if currEvTime >= !currentTime
                then do
-                 newEvs <- runCurrEvent
-                 let newLeftEvs = merge restEvs newEvs
+                 let newLeftEvs = merge restEvs !newEvsAfterRunningCurr
                  pure $ merge newLeftEvs $ awakened newLeftEvs
                else
                  -- TODO else wait for the `currEvTime - !currentTime`; or support and perform permanent tasks
@@ -141,8 +140,8 @@ runCoop co = runLeftEvents [Ev !currentTime co []] where
         S x => x                  -- either minimal minus 1
         Z   => S $ foldl max 0 ss -- or maximal plus 1
 
-    runCurrEvent : m (List $ Event m) -- returns new events as the result of running
-    runCurrEvent = case currCoop of
+    newEvsAfterRunningCurr : m (List $ Event m)
+    newEvsAfterRunningCurr = case currCoop of
       Point x                        => x $> Nil
       Cooperative l r                => pure [Ev currEvTime l postponed, Ev currEvTime r postponed]
       DelayedTill d                  => pure [Ev d (Point $ pure ()) postponed] -- this enables postponed to be run when appropriate (delayed)
