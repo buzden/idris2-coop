@@ -51,6 +51,18 @@ data Coop : (m : Type -> Type) -> (a : Type) -> Type where
   Cooperative : Coop m a -> Coop m b -> Coop m ()
   DelayedTill : Time -> Coop m ()
 
+--------------------------------
+--- Basic creation functions ---
+--------------------------------
+
+export
+lift : m a -> Coop m a
+lift = Point
+
+export
+atomic : m a -> Coop m a
+atomic = lift
+
 -----------------------
 --- Implementations ---
 -----------------------
