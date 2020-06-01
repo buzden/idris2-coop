@@ -105,10 +105,10 @@ data Event : (Type -> Type) -> Type where
 
 -- The following comparison is only according to the time; this will incorrectly work for sets.
 -- Equally timed events with different actions are considered to be equal with `==` relation.
-Eq (Event m) where
+[TimeOnly_EvEq] Eq (Event m) where
   (Ev tl _ _) == (Ev tr _ _) = tl == tr
 
-Ord (Event m) where
+[TimeOnly_EvOrd] Ord (Event m) using TimeOnly_EvEq where
   compare (Ev tl _ _) (Ev tr _ _) = tl `compare` tr
 
 export covering
@@ -122,8 +122,8 @@ runCoop co = runLeftEvents [Ev !currentTime co []] where
   runLeftEvents evs@((Ev currEvTime currCoop postponed)::restEvs) = do
     nextEvs <- if currEvTime >= !currentTime
                then do
-                 let newLeftEvs = merge restEvs !newEvsAfterRunningCurr
-                 pure $ merge newLeftEvs $ awakened newLeftEvs
+                 let newLeftEvs = merge @{TimeOnly_EvOrd} restEvs !newEvsAfterRunningCurr
+                 pure $ merge @{TimeOnly_EvOrd} newLeftEvs $ awakened newLeftEvs
                else
                  -- TODO else wait for the `currEvTime - !currentTime`; or support and perform permanent tasks
                  pure evs
