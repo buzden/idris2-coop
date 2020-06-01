@@ -100,8 +100,15 @@ export
 Sync : Type
 Sync = Nat
 
+-- Two present fences with the same sync are meant to be blocking each other.
+-- Postponed `Coop m y` needs to be sheduled only when all events with its sync are over.
+-- `Sync` type is a comparable type and is a workaround of uncomparability of `Coop`.
+data Fence : (Type -> Type) -> Type where
+  No : Fence m
+  Sy : Sync -> (postponed : Coop m y) -> (next : Fence m) -> Fence m
+
 data Event : (Type -> Type) -> Type where
-  Ev : (t : Time) -> Coop m x -> List (Sync, (y : Type ** Coop m y)) -> Event m
+  Ev : (t : Time) -> Coop m x -> Fence m -> Event m
 
 -- The following comparison is only according to the time; this will incorrectly work for sets.
 -- Equally timed events with different actions are considered to be equal with `==` relation.
@@ -113,13 +120,13 @@ data Event : (Type -> Type) -> Type where
 
 export covering
 runCoop : (Monad m, Timed m) => Coop m a -> m ()
-runCoop co = runLeftEvents [Ev !currentTime co []] where
+runCoop co = runLeftEvents [Ev !currentTime co No] where
 
   -- TODO to replace list with a sortedness-preserving kinda-list
   covering
   runLeftEvents : List $ Event m -> m ()
   runLeftEvents [] = pure ()
-  runLeftEvents evs@((Ev currEvTime currCoop postponed)::restEvs) = do
+  runLeftEvents evs@((Ev currEvTime currCoop currFence)::restEvs) = do
     nextEvs <- if currEvTime >= !currentTime
                then do
                  let newLeftEvs = merge @{TimeOnly_EvOrd} restEvs !newEvsAfterRunningCurr
@@ -131,7 +138,10 @@ runCoop co = runLeftEvents [Ev !currentTime co []] where
 
   where
     syncs : List (Event m) -> List Sync
-    syncs evs = evs >>= \(Ev _ _ postponed) => map fst postponed
+    syncs evs = evs >>= \(Ev _ _ fence) => syncsOfFence fence where
+      syncsOfFence : Fence m -> List Sync
+      syncsOfFence No          = []
+      syncsOfFence (Sy s _ fe) = s :: syncsOfFence fe
 
     uniqueSync : Lazy Sync
     uniqueSync = case syncs evs of
@@ -140,17 +150,21 @@ runCoop co = runLeftEvents [Ev !currentTime co []] where
         S x => x                  -- either minimal minus 1
         Z   => S $ foldl max 0 ss -- or maximal plus 1
 
+    -- All actions of form `patterm => pure [Ev ..., ...]` can be thought as a rewriting rule upon the list of events.
     newEvsAfterRunningCurr : m (List $ Event m)
     newEvsAfterRunningCurr = case currCoop of
       Point x                        => x $> Nil
-      Cooperative l r                => pure [Ev currEvTime l postponed, Ev currEvTime r postponed]
-      DelayedTill d                  => pure [Ev d (Point $ pure ()) postponed] -- this enables postponed to be run when appropriate (delayed)
-      Sequential (Point y)         f => map (\r => [Ev currEvTime (f r) postponed]) y
-      Sequential (Sequential y g)  f => pure [Ev currEvTime (Sequential y $ g >=> f) postponed]
-      Sequential (DelayedTill d)   f => pure [Ev d (f ()) postponed]
-      Sequential (Cooperative l r) f => let extP = (Force uniqueSync, (_ ** f ()))::postponed in
-                                        pure [Ev currEvTime l extP, Ev currEvTime r extP]
+      Cooperative l r                => pure [Ev currEvTime l currFence, Ev currEvTime r currFence]
+      DelayedTill d                  => pure [Ev d (Point $ pure ()) currFence] -- this enables currFence to be run when appropriate (delayed)
+      Sequential (Point y)         f => map (\r => [Ev currEvTime (f r) currFence]) y
+      Sequential (Sequential y g)  f => pure [Ev currEvTime (Sequential y $ g >=> f) currFence]
+      Sequential (DelayedTill d)   f => pure [Ev d (f ()) currFence]
+      Sequential (Cooperative l r) f => let newFence = Sy (Force uniqueSync) (f ()) currFence in -- coop in the `currFence` needs to be run after the `f ()`
+                                        pure [Ev currEvTime l newFence, Ev currEvTime r newFence]
 
     awakened : (evsAfterCurr : List $ Event m) -> List $ Event m
-    awakened evsAfterCurr = let newLeftSyncs = syncs evsAfterCurr in
-      map (\(_, (_ ** coop)) => Ev currEvTime coop []) . filter (not . flip elem newLeftSyncs . fst) $ postponed
+    awakened evsAfterCurr = case currFence of
+      No                    => []
+      Sy sync coop subFence => if sync `elem` syncs evsAfterCurr
+                                   then []                            -- then someone else will raise this
+                                   else [Ev currEvTime coop subFence] -- no one that blocks is left
