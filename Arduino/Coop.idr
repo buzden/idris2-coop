@@ -1,40 +1,20 @@
 module Arduino.Coop
 
+import public Arduino.Time
 import Arduino.Util
 
 import Control.Monad.Syntax
 
 %default total
 
--------------
---- Types ---
--------------
-
--- TODO to make this type be nicer
-public export
-Time : Type
-Time = Nat
-
 ------------------
 --- Interfaces ---
 ------------------
 
 public export
-interface Timed (m : Type -> Type) where
-  currentTime : m Time
-
-public export
 interface Parallel (m : Type -> Type) where
   -- Alternative-like operator with parallel semantics and unavailable results of separate computations
   (<|>) : m a -> m b -> m ()
-
-public export
-interface Monad m => DelayableTill (m : Type -> Type) where
-  delayTill : Time -> m ()
-
-public export
-interface Monad m => DelayableFor (m : Type -> Type) where
-  delay : Time -> m ()
 
 ------------
 --- Data ---
@@ -98,7 +78,7 @@ Parallel (Coop m) where
   (<|>) = Cooperative
 
 export
-(Timed m, Monad m) => DelayableTill (Coop m) where
+Monad m => DelayableTill (Coop m) where
   delayTill = DelayedTill
 
 export
