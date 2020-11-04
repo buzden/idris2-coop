@@ -24,7 +24,7 @@ interface Parallel (m : Type -> Type) where
 
 export
 data Coop : (m : Type -> Type) -> (a : Type) -> Type where
-  Point       : m a -> Coop m a
+  Point       : (1 _ : m a) -> Coop m a
   Sequential  : Coop m a -> (a -> Coop m b) -> Coop m b
   Cooperative : Coop m a -> Coop m b -> Coop m Unit
   DelayedTill : Time -> Coop m Unit
@@ -34,11 +34,11 @@ data Coop : (m : Type -> Type) -> (a : Type) -> Type where
 --------------------------------
 
 export
-lift : m a -> Coop m a
+lift : (1 _ : m a) -> Coop m a
 lift = Point
 
 export
-atomic : m a -> Coop m a
+atomic : (1 _ : m a) -> Coop m a
 atomic = lift
 
 -----------------------
