@@ -13,13 +13,15 @@ Time = Nat
 --- Functions ---
 -----------------
 
-export
-toMilliseconds : Time -> Int
-toMilliseconds = toIntNat
+-- TODO to make something with, well, the fact that `Bits32` leaks out from the implementation
 
 export
-fromMilliseconds : Int -> Time
-fromMilliseconds = toNat
+toMilliseconds : Time -> Bits32
+toMilliseconds = cast . natToInteger
+
+export
+fromMilliseconds : Bits32 -> Time
+fromMilliseconds = fromInteger . cast
 
 ------------------
 --- Interfaces ---

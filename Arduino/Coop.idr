@@ -3,6 +3,8 @@ module Arduino.Coop
 import public Arduino.Time
 import Arduino.Util
 
+import Data.List
+
 import Control.Monad.Syntax
 
 %default total
