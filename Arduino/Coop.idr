@@ -16,7 +16,7 @@ import Control.Monad.Syntax
 public export
 interface Parallel (m : Type -> Type) where
   -- Alternative-like operator with parallel semantics and unavailable results of separate computations
-  (<|>) : m Unit -> m Unit -> m Unit
+  (<||>) : m Unit -> m Unit -> m Unit
 
 ------------
 --- Data ---
@@ -68,7 +68,7 @@ Applicative m => Applicative (Coop m) where
   pure    = Point . pure
   l <*> r = Sequential l $ \lf => map lf r
   -- This could be `(<*>) = Cooperative apply`, but it must be consistent with `(>>=)` definition.
-  -- Consider code `doSmth *> delayedFor 100 *> doMore` comparing to `(doSmth <|> delayedFor 100) *> doMore`.
+  -- Consider code `doSmth *> delayedFor 100 *> doMore` comparing to `(doSmth <||> delayedFor 100) *> doMore`.
   -- Having parallel semantics for the `Applicative`'s `<*>`, those two examples above will mean the same, which seems to be unexpected.
 
 export
@@ -77,7 +77,7 @@ Monad m => Monad (Coop m) where
 
 export
 Parallel (Coop m) where
-  (<|>) = Cooperative
+  (<||>) = Cooperative
 
 export
 Monad m => DelayableTill (Coop m) where
