@@ -87,6 +87,10 @@ export
 (Timed m, Monad m) => DelayableFor (Coop m) where
   delay t = delayTill . (+t) =<< currentTime
 
+export
+HasIO (Coop IO) where
+  liftIO = lift
+
 -------------------
 --- Interpreter ---
 -------------------
