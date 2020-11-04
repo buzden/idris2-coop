@@ -16,7 +16,7 @@ import Control.Monad.Syntax
 public export
 interface Parallel (m : Type -> Type) where
   -- Alternative-like operator with parallel semantics and unavailable results of separate computations
-  (<|>) : m a -> m b -> m ()
+  (<|>) : m () -> m () -> m ()
 
 ------------
 --- Data ---
@@ -113,7 +113,7 @@ data Event : (Type -> Type) -> Type where
   compare (Ev tl _ _) (Ev tr _ _) = tl `compare` tr
 
 export covering
-runCoop : (Monad m, Timed m) => Coop m a -> m ()
+runCoop : (Monad m, Timed m) => Coop m () -> m ()
 runCoop co = runLeftEvents [Ev !currentTime co No] where
 
   -- TODO to replace list with a sortedness-preserving kinda-list
