@@ -16,7 +16,7 @@ import Control.Monad.Syntax
 public export
 interface Parallel (m : Type -> Type) where
   -- Alternative-like operator with parallel semantics and unavailable results of separate computations
-  (<|>) : m () -> m () -> m ()
+  (<|>) : m Unit -> m Unit -> m Unit
 
 ------------
 --- Data ---
@@ -26,8 +26,8 @@ export
 data Coop : (m : Type -> Type) -> (a : Type) -> Type where
   Point       : m a -> Coop m a
   Sequential  : Coop m a -> (a -> Coop m b) -> Coop m b
-  Cooperative : Coop m a -> Coop m b -> Coop m ()
-  DelayedTill : Time -> Coop m ()
+  Cooperative : Coop m a -> Coop m b -> Coop m Unit
+  DelayedTill : Time -> Coop m Unit
 
 --------------------------------
 --- Basic creation functions ---
@@ -113,12 +113,12 @@ data Event : (Type -> Type) -> Type where
   compare (Ev tl _ _) (Ev tr _ _) = tl `compare` tr
 
 export covering
-runCoop : (Monad m, Timed m) => Coop m () -> m ()
+runCoop : (Monad m, Timed m) => Coop m Unit -> m Unit
 runCoop co = runLeftEvents [Ev !currentTime co No] where
 
   -- TODO to replace list with a sortedness-preserving kinda-list
   covering
-  runLeftEvents : List $ Event m -> m ()
+  runLeftEvents : List $ Event m -> m Unit
   runLeftEvents [] = pure ()
   runLeftEvents evs@((Ev currEvTime currCoop currFence)::restEvs) = do
     nextEvs <- if currEvTime >= !currentTime
