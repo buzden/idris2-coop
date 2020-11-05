@@ -6,6 +6,7 @@ import Arduino.Util
 import Data.List
 
 import Control.Monad.Syntax
+import Control.Monad.Trans
 
 %default total
 
@@ -90,6 +91,10 @@ export
 export
 HasIO (Coop IO) where
   liftIO = lift
+
+export
+MonadTrans Coop where
+  lift = Arduino.Coop.lift
 
 -------------------
 --- Interpreter ---
