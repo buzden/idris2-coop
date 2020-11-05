@@ -35,12 +35,8 @@ data Coop : (m : Type -> Type) -> (a : Type) -> Type where
 --------------------------------
 
 export
-lift : (1 _ : m a) -> Coop m a
-lift = Point
-
-export
 atomic : (1 _ : m a) -> Coop m a
-atomic = lift
+atomic = Point
 
 -----------------------
 --- Implementations ---
@@ -90,11 +86,11 @@ export
 
 export
 HasIO (Coop IO) where
-  liftIO = lift
+  liftIO = atomic
 
 export
 MonadTrans Coop where
-  lift = Arduino.Coop.lift
+  lift = atomic
 
 -------------------
 --- Interpreter ---
