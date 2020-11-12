@@ -126,7 +126,7 @@ runCoop co = runLeftEvents [Ev !currentTime co No] where
   runLeftEvents : List $ Event m -> m Unit
   runLeftEvents [] = pure ()
   runLeftEvents evs@((Ev currEvTime currCoop currFence)::restEvs) = do
-    nextEvs <- if currEvTime >= !currentTime
+    nextEvs <- if !currentTime >= currEvTime
                then do
                  let newLeftEvs = merge @{TimeOnly_EvOrd} restEvs !newEvsAfterRunningCurr
                  pure $ merge @{TimeOnly_EvOrd} newLeftEvs $ awakened newLeftEvs
