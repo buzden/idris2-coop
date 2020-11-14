@@ -11,9 +11,7 @@ Timed IO where
   currentTime = fromInteger <$> millis
 
 printTime : HasIO io => (offset : Integer) -> String -> io Unit
-printTime offset s = do
-  t <- millis
-  printLn $ "[time: " ++ show (t - offset) ++ "] " ++ s
+printTime offset s = printLn $ "[time: " ++ show (!millis - offset) ++ "] " ++ s
 
 forever : Monad m => m a -> m b
 forever x = do x; forever x
