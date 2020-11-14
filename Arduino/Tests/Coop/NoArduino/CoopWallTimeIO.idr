@@ -29,8 +29,8 @@ main = do printLn "before coop"
       printTime offset "proc 1, before 2000"
       delayFor 2000)
     (forever $ do
-      printTime offset "proc 2, before 350"
+      printTime offset "                     proc 2, before 350"
       delayFor 350
-      printTime offset "proc 2, before 750"
+      printTime offset "                     proc 2, before 750"
       delayFor 750)
 
