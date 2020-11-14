@@ -37,4 +37,4 @@ interface Monad m => DelayableTill (m : Type -> Type) where
 
 public export
 interface Monad m => DelayableFor (m : Type -> Type) where
-  delay : Time -> m Unit
+  delayFor : Time -> m Unit

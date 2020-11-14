@@ -21,18 +21,18 @@ forever x = do x; forever x
 export
 main : IO Unit
 main = do printLn "before coop"
-          runCoop $ with Arduino.Time.delay do
+          runCoop $ do
   offset <- millis
   printTime offset "start"
   (<||>)
     (forever $ do
       printTime offset "proc 1, before 1000"
-      delay 1000
+      delayFor 1000
       printTime offset "proc 1, before 2000"
-      delay 2000)
+      delayFor 2000)
     (forever $ do
       printTime offset "proc 2, before 350"
-      delay 350
+      delayFor 350
       printTime offset "proc 2, before 750"
-      delay 750)
+      delayFor 750)
 
