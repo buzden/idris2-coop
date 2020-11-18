@@ -167,3 +167,13 @@ runCoop co = runLeftEvents [Ev !currentTime co No] where
       Sy sync coop subFence => if sync `elem` syncs evsAfterCurr
                                    then []                            -- then someone else will raise this
                                    else [Ev currEvTime coop subFence] -- no one that blocks is left
+
+------------------------------
+--- Interesting properties ---
+------------------------------
+
+0 run_unlifts : (Monad m, Timed m) => (x : m ()) -> runCoop (lift x) = x
+
+0 run_seq_dep_lin : (Monad m, Timed m) => (x : m a) -> (y : a -> Coop m ()) -> runCoop (lift x >>= y) = x >>= runCoop . y
+
+0 run_seq_indep_lin : (Monad m, Timed m) => (x, y : Coop m ()) -> runCoop (x >>= const y) = runCoop x >>= const (runCoop y)
