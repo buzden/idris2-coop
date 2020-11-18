@@ -1,5 +1,4 @@
-import Arduino.Coop
-
+import Control.Monad.Coop
 import Control.Monad.State
 
 -------------------------------

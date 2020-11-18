@@ -1,0 +1,10 @@
+package coop_tests
+
+modules =
+    Tests.Coop.RunFinite_IO_WallTime
+  , Tests.Coop.RunInfinite_IO_WallTime
+  , Tests.Coop.UnitTests_StateT_StrangeTime
+
+depends = coop, contrib
+
+sourcedir = "src"

@@ -1,0 +1,7 @@
+package coop
+
+modules = Control.Monad.Coop
+
+depends = contrib
+
+sourcedir = "src"

@@ -1,4 +1,4 @@
-module Arduino.Coop
+module Control.Monad.Coop
 
 import public Arduino.Time
 import Arduino.Util

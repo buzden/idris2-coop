@@ -1,4 +1,4 @@
-import Arduino.Coop
+import Control.Monad.Coop
 
 import System.Clock
 
@@ -13,8 +13,9 @@ Timed IO where
 printTime : HasIO io => (offset : Integer) -> String -> io Unit
 printTime offset s = printLn $ "[time: " ++ show (!millis - offset) ++ "] " ++ s
 
-forever : Monad m => m a -> m b
-forever x = do x; forever x
+for : Nat -> Monad m => m a -> m ()
+for Z     _ = pure ()
+for (S n) a = do a; for n a
 
 export
 main : IO Unit
@@ -23,12 +24,12 @@ main = do printLn "before coop"
   offset <- millis
   printTime offset "start"
   (<||>)
-    (forever $ do
+    (for 5 $ do
       printTime offset "proc 1, before 1000"
       delayFor 1000
       printTime offset "proc 1, before 2000"
       delayFor 2000)
-    (forever $ do
+    (for 10 $ do
       printTime offset "                     proc 2, before 350"
       delayFor 350
       printTime offset "                     proc 2, before 750"
