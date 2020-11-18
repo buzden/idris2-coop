@@ -33,8 +33,8 @@ interface Timed (m : Type -> Type) where
 
 public export
 interface Monad m => DelayableTill (m : Type -> Type) where
-  delayTill : Time -> m Unit
+  sleepTill : Time -> m Unit
 
 public export
 interface Monad m => DelayableFor (m : Type -> Type) where
-  delayFor : Time -> m Unit
+  sleepFor : Time -> m Unit

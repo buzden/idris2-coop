@@ -78,11 +78,11 @@ Parallel (Coop m) where
 
 export
 Monad m => DelayableTill (Coop m) where
-  delayTill = DelayedTill
+  sleepTill = DelayedTill
 
 export
 (Timed m, Monad m) => DelayableFor (Coop m) where
-  delayFor t = delayTill . (+t) =<< currentTime
+  sleepFor t = sleepTill . (+t) =<< currentTime
 
 export
 HasIO (Coop IO) where

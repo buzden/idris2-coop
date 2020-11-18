@@ -25,12 +25,12 @@ main = do printLn "before coop"
   (<||>)
     (forever $ do
       printTime offset "proc 1, before 1000"
-      delayFor 1000
+      sleepFor 1000
       printTime offset "proc 1, before 2000"
-      delayFor 2000)
+      sleepFor 2000)
     (forever $ do
       printTime offset "                     proc 2, before 350"
-      delayFor 350
+      sleepFor 350
       printTime offset "                     proc 2, before 750"
-      delayFor 750)
+      sleepFor 750)
 
