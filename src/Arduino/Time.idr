@@ -7,7 +7,7 @@ module Arduino.Time
 -- TODO to make this type be nicer
 public export
 Time : Type
-Time = Nat
+Time = Int
 
 -----------------
 --- Functions ---
@@ -17,7 +17,7 @@ Time = Nat
 
 export
 toMilliseconds : Time -> Bits32
-toMilliseconds = cast . natToInteger
+toMilliseconds = cast
 
 export
 fromMilliseconds : Bits32 -> Time
