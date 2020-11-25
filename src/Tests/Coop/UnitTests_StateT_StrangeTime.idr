@@ -6,7 +6,7 @@ import Control.Monad.State
 -------------------------------
 
 Timed (State $ List String) where
-  currentTime = length <$> get
+  currentTime = cast <$> length <$> get
 
 -- Awfully inefficient implementation, but will work for small tests.
 append : MonadState (List a) m => a -> m ()
