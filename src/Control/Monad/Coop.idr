@@ -15,7 +15,7 @@ import Control.Monad.Trans
 ------------------
 
 public export
-interface Parallel (m : Type -> Type) where
+interface Parallel m where
   -- Alternative-like operator with parallel semantics and unavailable results of separate computations
   (<||>) : m Unit -> m Unit -> m Unit
 

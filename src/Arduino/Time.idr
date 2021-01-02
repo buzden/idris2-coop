@@ -28,13 +28,13 @@ fromMilliseconds = fromInteger . cast
 ------------------
 
 public export
-interface Timed (m : Type -> Type) where
+interface Timed m where
   currentTime : m Time
 
 public export
-interface Monad m => DelayableTill (m : Type -> Type) where
+interface Monad m => DelayableTill m where
   sleepTill : Time -> m Unit
 
 public export
-interface Monad m => DelayableFor (m : Type -> Type) where
+interface Monad m => DelayableFor m where
   sleepFor : Time -> m Unit
