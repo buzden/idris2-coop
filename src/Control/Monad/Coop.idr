@@ -63,7 +63,7 @@ Applicative m => Functor (Coop m) where
 export
 Applicative m => Applicative (Coop m) where
   pure    = Point . pure
-  l <*> r = Sequential l $ \lf => map lf r
+  l <*> r = Sequential l (<$> r)
   -- This could be `(<*>) = Cooperative apply`, but it must be consistent with `(>>=)` definition.
   -- Consider code `doSmth *> delayedFor 100 *> doMore` comparing to `(doSmth <||> delayedFor 100) *> doMore`.
   -- Having parallel semantics for the `Applicative`'s `<*>`, those two examples above will mean the same, which seems to be unexpected.
