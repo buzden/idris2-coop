@@ -165,7 +165,7 @@ runCoop co = runLeftEvents [Ev !currentTime co No] where
       Sequential (Point y)         f => map (\r => [Ev currEvTime (f r) currFence]) y
       Sequential (Sequential y g)  f => pure [Ev currEvTime (Sequential y $ g >=> f) currFence]
       Sequential (DelayedTill d)   f => pure [Ev d (f ()) currFence]
-      Sequential (Cooperative l r) f => let newFence = Sy (Force uniqueSync) (f ()) currFence in -- coop in the `currFence` needs to be run after the `f ()`
+      Sequential (Cooperative l r) f => let newFence = Sy uniqueSync (f ()) currFence in -- coop in the `currFence` needs to be run after the `f ()`
                                         pure [Ev currEvTime l newFence, Ev currEvTime r newFence]
 
     awakened : (evsAfterCurr : List $ Event m) -> List $ Event m
