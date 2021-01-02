@@ -106,16 +106,23 @@ data Fence : (Type -> Type) -> Type where
   No : Fence m
   Sy : Sync -> (postponed : Coop m y) -> (next : Fence m) -> Fence m
 
-data Event : (Type -> Type) -> Type where
-  Ev : (t : Time) -> Coop m x -> Fence m -> Event m
+record Event m where
+  constructor Ev
+  time  : Time
+  coop  : Coop m x
+  fence : Fence m
+
+-- This great function must be somewhere in the standard libraries.
+on : (b -> b -> c) -> (a -> b) -> a -> a -> c
+on f g x y = g x `f` g y
 
 -- The following comparison is only according to the time; this will incorrectly work for sets.
 -- Equally timed events with different actions are considered to be equal with `==` relation.
 [TimeOnly_EvEq] Eq (Event m) where
-  (Ev tl _ _) == (Ev tr _ _) = tl == tr
+  (==) = (==) `on` time
 
 [TimeOnly_EvOrd] Ord (Event m) using TimeOnly_EvEq where
-  compare (Ev tl _ _) (Ev tr _ _) = tl `compare` tr
+  compare = compare `on` time
 
 export covering
 runCoop : (Monad m, Timed m) => Coop m Unit -> m Unit
@@ -137,7 +144,7 @@ runCoop co = runLeftEvents [Ev !currentTime co No] where
 
   where
     syncs : List (Event m) -> List Sync
-    syncs evs = evs >>= \(Ev _ _ fence) => syncsOfFence fence where
+    syncs evs = evs >>= syncsOfFence . fence where
       syncsOfFence : Fence m -> List Sync
       syncsOfFence No          = []
       syncsOfFence (Sy s _ fe) = s :: syncsOfFence fe
