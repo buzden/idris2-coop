@@ -3,6 +3,7 @@ package coop
 authors = "Denis Buzdalov"
 
 modules = Control.Monad.Coop
+        , System.Time
 
 depends = contrib
 

@@ -1,11 +1,9 @@
 module Control.Monad.Coop
 
-import public Arduino.Time
-import Arduino.Util
+import public System.Time
 
 import Data.List
 
-import Control.Monad.Syntax
 import Control.Monad.Trans
 
 %default total
@@ -45,8 +43,6 @@ atomic = Point
 export
 Timed m => Timed (Coop m) where
   currentTime = Point currentTime
-
-infixl 4 $>
 
 ($>) : Applicative m => Coop m a -> b -> Coop m b
 (Point _)        $> b = Point $ pure b
@@ -111,10 +107,6 @@ record Event m where
   time  : Time
   coop  : Coop m x
   fence : Fence m
-
--- This great function must be somewhere in the standard libraries.
-on : (b -> b -> c) -> (a -> b) -> a -> a -> c
-on f g x y = g x `f` g y
 
 -- The following comparison is only according to the time; this will incorrectly work for sets.
 -- Equally timed events with different actions are considered to be equal with `==` relation.
@@ -181,6 +173,6 @@ runCoop co = runLeftEvents [Ev !currentTime co No] where
 
 0 run_unlifts : (Monad m, Timed m) => (x : m ()) -> runCoop (lift x) = x
 
-0 run_seq_dep_lin : (Monad m, Timed m) => (x : m a) -> (y : a -> Coop m ()) -> runCoop (lift x >>= y) = x >>= runCoop . y
+0 run_seq_dep_lin : (Monad m, Timed m) => (x : m a) -> (y : a -> Coop m ()) -> runCoop (lift x >>= y) = x >>= Coop.runCoop . y
 
 0 run_seq_indep_lin : (Monad m, Timed m) => (x, y : Coop m ()) -> runCoop (x >>= const y) = runCoop x >>= const (runCoop y)

@@ -1,4 +1,6 @@
-module Arduino.Time
+module System.Time
+
+%default total
 
 -------------
 --- Types ---
