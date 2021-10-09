@@ -14,7 +14,7 @@ printTime : HasIO io => (offset : Integer) -> String -> io Unit
 printTime offset s = printLn $ "[time: " ++ show (!millis - offset) ++ "] " ++ s
 
 forever : Monad m => m a -> m b
-forever x = do x; forever x
+forever x = do ignore x; forever x
 
 export
 main : IO Unit

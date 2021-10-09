@@ -15,7 +15,7 @@ printTime offset s = printLn $ "[time: " ++ show (!millis - offset) ++ "] " ++ s
 
 for : Nat -> Monad m => m a -> m ()
 for Z     _ = pure ()
-for (S n) a = do a; for n a
+for (S n) a = do ignore a; for n a
 
 export
 main : IO Unit

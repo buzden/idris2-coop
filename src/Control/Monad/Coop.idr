@@ -23,7 +23,7 @@ interface Parallel m where
 
 export
 data Coop : (m : Type -> Type) -> (a : Type) -> Type where
-  Point       : (1 _ : m a) -> Coop m a
+  Point       : m a -> Coop m a
   Sequential  : Coop m a -> (a -> Coop m b) -> Coop m b
   Cooperative : Coop m a -> Coop m b -> Coop m Unit
   DelayedTill : Time -> Coop m Unit
@@ -33,7 +33,7 @@ data Coop : (m : Type -> Type) -> (a : Type) -> Type where
 --------------------------------
 
 export
-atomic : (1 _ : m a) -> Coop m a
+atomic : m a -> Coop m a
 atomic = Point
 
 -----------------------
@@ -122,7 +122,7 @@ runCoop co = runLeftEvents [Ev !currentTime co No] where
 
   -- TODO to replace list with a sortedness-preserving kinda-list
   covering
-  runLeftEvents : List $ Event m -> m Unit
+  runLeftEvents : List (Event m) -> m Unit
   runLeftEvents [] = pure ()
   runLeftEvents evs@((Ev currEvTime currCoop currFence)::restEvs) = do
     nextEvs <- if !currentTime >= currEvTime
