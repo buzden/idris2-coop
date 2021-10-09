@@ -1,0 +1,19 @@
+rm -rf build
+
+# More or less arbitrary values
+SECONDS_TO_RUN=5
+VALUES_TO_CHECK=20
+
+# Run the test program for certain amount of time
+$1 --exec main --no-color --console-width 0 --no-banner --find-ipkg WallTimeInfinite.idr > temp &
+runpid=$!
+sleep $SECONDS_TO_RUN
+kill $runpid
+
+# Processes may be interleaved, but the rest should be not.
+# Also, we may need to erase or round printed time stamps.
+grep -v 'proc 2' temp | head -n $VALUES_TO_CHECK
+grep -v 'proc 1' temp | head -n $VALUES_TO_CHECK
+rm -r temp
+
+rm -rf build
