@@ -4,8 +4,8 @@ $1 --exec main --no-color --console-width 0 --no-banner --find-ipkg WallTimeFini
 
 # Processes may be interleaved, but the rest should be not.
 # Also, we may need to erase or round printed time stamps.
-grep -v 'proc 2' temp
-grep -v 'proc 1' temp
+grep -v 'proc 2' temp | sed 's/.]/0]/'
+grep -v 'proc 1' temp | sed 's/.]/0]/'
 rm -r temp
 
 rm -rf build
