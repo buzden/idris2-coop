@@ -1,10 +1,10 @@
 Coop (Cooperative multitasking library for Idris 2)
 Copyright 2020 Denis Buzdalov
 
-This repository contains makefiles derived from the ones taken from
-Idris 2 repository (https://github.com/idris-lang/Idris2) which is
-licensed with BSD-3-Clause license.
-For theese pieces the following copyright notice applies.
+This repository contains makefiles and an editorconfig file derived
+from files taken from Idris 2 repository (https://github.com/idris-lang/Idris2)
+which is licensed with the BSD-3-Clause license.
+For these pieces the following copyright notice applies.
 
 Copyright (c) 2020 Edwin Brady
     School of Computer Science, University of St Andrews
