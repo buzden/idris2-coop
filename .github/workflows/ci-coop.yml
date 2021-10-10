@@ -1,0 +1,52 @@
+name: The `coop` library
+
+on:
+  push:
+    branches:
+      - '**'
+    tags:
+      - '**'
+  pull_request:
+    branches:
+      - main
+      - master
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+
+  read-ver:
+    name: Aquire compiler version
+    runs-on: ubuntu-latest
+    env:
+      IDRIS_VERSION_FILE: .idris-version
+    outputs:
+      idris-ver: ${{ steps.read-ver.outputs.idris-ver }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Read the version
+        id: read-ver
+        run: sed 's/^/::set-output name=idris-ver::/' < "${IDRIS_VERSION_FILE}"
+
+  build:
+    name: Build and test `coop`
+    needs: read-ver
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        idris-version: # git describe --tags
+          - ${{ needs.read-ver.outputs.idris-ver }}
+          - latest
+    container: snazzybucket/idris2api:${{ matrix.idris-version }}
+    continue-on-error: ${{ matrix.idris-version == 'latest' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Build `coop`
+        run: make coop
+      - name: Test `coop`
+        run: make test-coop
