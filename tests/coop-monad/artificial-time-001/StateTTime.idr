@@ -6,7 +6,7 @@ import Control.Monad.State
 -------------------------------
 
 Timed (State $ List String) where
-  currentTime = cast <$> length <$> get
+  currentTime = (.millis) <$> length <$> get
 
 -- Awfully inefficient implementation, but will work for small tests.
 append : MonadState (List a) m => a -> m ()
@@ -23,6 +23,9 @@ x === y = if x == y
 MonadState st m => MonadState st (Coop m) where
   get = lift get
   put = lift . put
+
+Show Time where
+  show t = show t.asMillis
 
 -----------------------
 --- Unit test cases ---

@@ -8,7 +8,7 @@ millis = liftIO $ composeTime <$> clockTime Monotonic where
   composeTime (MkClock secs nanos) = secs * 1000 + nanos `div` 1000000
 
 Timed IO where
-  currentTime = fromInteger <$> millis
+  currentTime = (.millis) . fromInteger <$> millis
 
 printTime : HasIO io => (offset : Integer) -> String -> io Unit
 printTime offset s = putStrLn $ "[time: " ++ show (!millis - offset) ++ "] " ++ s
@@ -26,12 +26,12 @@ main = do putStrLn "before coop"
   (<||>)
     (for 5 $ do
       printTime offset "proc 1, before 1000"
-      sleepFor 1000
+      sleepFor 1.seconds
       printTime offset "proc 1, before 2000"
-      sleepFor 2000)
+      sleepFor 2.seconds)
     (for 10 $ do
       printTime offset "                     proc 2, before 350"
-      sleepFor 350
+      sleepFor 350.millis
       printTime offset "                     proc 2, before 750"
-      sleepFor 750)
+      sleepFor 750.millis)
 
