@@ -11,7 +11,7 @@ Timed IO where
   currentTime = fromInteger <$> millis
 
 printTime : HasIO io => (offset : Integer) -> String -> io Unit
-printTime offset s = printLn $ "[time: " ++ show (!millis - offset) ++ "] " ++ s
+printTime offset s = putStrLn $ "[time: " ++ show (!millis - offset) ++ "] " ++ s
 
 for : Nat -> Monad m => m a -> m ()
 for Z     _ = pure ()
@@ -19,7 +19,7 @@ for (S n) a = do ignore a; for n a
 
 export
 main : IO Unit
-main = do printLn "before coop"
+main = do putStrLn "before coop"
           runCoop $ do
   offset <- millis
   printTime offset "start"
