@@ -1,11 +1,6 @@
 rm -rf build
 
-$1 --exec main --no-color --console-width 0 --no-banner --find-ipkg WallTimeFinite.idr > temp
-
-# Processes may be interleaved, but the rest should be not.
-# Also, we may need to erase or round printed time stamps.
-grep -v 'proc 2' temp | sed 's/[0-4][0-9]]/00]/' | sed 's/[5-9][0-9]]/50]/' | sed 's/ [0-9]]/ 0]/'
-grep -v 'proc 1' temp | sed 's/[0-4][0-9]]/00]/' | sed 's/[5-9][0-9]]/50]/' | sed 's/ [0-9]]/ 0]/'
-rm -r temp
+$1 --exec main --no-color --console-width 0 --no-banner --find-ipkg WallTimeFinite.idr \
+  | sed 's/[0-4][0-9]]/00]/' | sed 's/[5-9][0-9]]/50]/' | sed 's/ [0-9]]/ 0]/'
 
 rm -rf build
