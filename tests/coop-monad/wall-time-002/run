@@ -6,10 +6,10 @@ VALUES_TO_CHECK1=20
 VALUES_TO_CHECK2=50
 
 # Run the test program for certain amount of time
-stdbuf -oL $1 --exec main --no-color --console-width 0 --no-banner --find-ipkg WallTimeInfinite.idr > temp &
-runpid=$!
-sleep $SECONDS_TO_RUN
-kill $runpid
+# To do so and to kill ALL and ONLY THOSE processes that are created after the `idris2 --exec` call, we need
+# to create a new process group (using double `setsid`) and then killing the whole group (using `kill 0`).
+setsid -w setsid -w bash -c \
+ "stdbuf -oL $1 --exec main --no-color --console-width 0 --no-banner --find-ipkg WallTimeInfinite.idr > temp & sleep $SECONDS_TO_RUN; kill 0"
 
 # Processes may be interleaved, but the rest should be not.
 # Also, we may need to erase or round printed time stamps.
