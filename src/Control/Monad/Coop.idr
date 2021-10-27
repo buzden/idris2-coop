@@ -100,16 +100,20 @@ mutual
   record Postponed (0 m : Type -> Type) where
     constructor Postpone
     sync : Sync
-    ev   : Event m -- time of this should be ignored
+    postCtx : CoopCtx m x
 
-  record Event (0 m : Type -> Type) where
-    constructor Ev
-    time : Time
+  record CoopCtx (0 m : Type -> Type) (0 x : Type) where
+    constructor Ctx
     coop : Coop m x
     -- Two present postponed events with the same sync are meant to be blocking each other.
     -- Postponed event needs to be sheduled only when all events with its sync are over.
     -- `Sync` type is a comparable type and is a workaround of uncomparability of `Coop`.
     joinCont : Maybe $ Postponed m
+
+record Event (0 m : Type -> Type) where
+  constructor Ev
+  time : Time
+  ctx  : CoopCtx m x
 
 -- The following comparison is only according to the time; this will incorrectly work for sets.
 -- Equally timed events with different actions are considered to be equal with `==` relation.
@@ -126,13 +130,13 @@ insertOrd new orig@(x::xs) = if new < x then new :: orig else x :: insertOrd new
 
 export covering
 runCoop : (Monad m, Timed m) => Coop m Unit -> m Unit
-runCoop co = runLeftEvents [Ev !currentTime co Nothing] where
+runCoop co = runLeftEvents [Ev !currentTime $ Ctx co Nothing] where
 
   -- TODO to replace list with a sortedness-preserving kinda-list
   covering
   runLeftEvents : List (Event m) -> m Unit
   runLeftEvents [] = pure ()
-  runLeftEvents evs@(ev@(Ev currEvTime currCoop currJoinCont)::restEvs) = do
+  runLeftEvents evs@(ev@(Ev currEvTime $ Ctx currCoop currJoinCont)::restEvs) = do
     nextEvs <- if !currentTime >= currEvTime
                then do
                  let newLeftEvs = merge @{TimeOnly_EvOrd} restEvs !newEvsAfterRunningCurr
@@ -146,9 +150,9 @@ runCoop co = runLeftEvents [Ev !currentTime co Nothing] where
 
   where
     syncs : List (Event m) -> List Sync
-    syncs evs = evs >>= syncs' where
-      syncs' : Event m -> List Sync
-      syncs' = maybe [] (\pp => pp.sync :: syncs' pp.ev) . joinCont
+    syncs evs = evs >>= \ev => syncs' ev.ctx where
+      syncs' : CoopCtx m a -> List Sync
+      syncs' = maybe [] (\pp => pp.sync :: syncs' pp.postCtx) . joinCont
 
     uniqueSync : Lazy Sync
     uniqueSync = case syncs evs of
@@ -161,19 +165,19 @@ runCoop co = runLeftEvents [Ev !currentTime co Nothing] where
     newEvsAfterRunningCurr : m (List $ Event m)
     newEvsAfterRunningCurr = case currCoop of
       Point x                        => x $> Nil
-      Cooperative l r                => pure [{coop := l} ev, {coop := r} ev]
-      DelayedTill d                  => pure [{time := d, coop := Point $ pure ()} ev]
-      Sequential (Point y)         f => map (\r => [{coop := f r} ev]) y
-      Sequential (Sequential y g)  f => pure [{coop := Sequential y $ g >=> f} ev]
-      Sequential (DelayedTill d)   f => pure [{time := d, coop := f ()} ev]
-      Sequential (Cooperative l r) f => let cont : Maybe (Postponed m) = Just $ Postpone uniqueSync $ {coop := f ()} ev in
-                                        pure [{coop := l, joinCont := cont} ev, {coop := r, joinCont := cont} ev]
+      Cooperative l r                => pure [{ctx.coop := l} ev, {ctx.coop := r} ev]
+      DelayedTill d                  => pure [{time := d, ctx.coop := Point $ pure ()} ev]
+      Sequential (Point y)         f => map (\r => [{ctx.coop := f r} ev]) y
+      Sequential (Sequential y g)  f => pure [{ctx.coop := Sequential y $ g >=> f} ev]
+      Sequential (DelayedTill d)   f => pure [{time := d, ctx.coop := f ()} ev]
+      Sequential (Cooperative l r) f => let cont = Just $ Postpone uniqueSync $ {coop := f ()} ev.ctx in
+                                            pure [{ctx := Ctx l cont} ev, {ctx := Ctx r cont} ev]
 
     awakened : (evsAfterCurr : List $ Event m) -> Maybe $ Event m
     awakened evsAfterCurr = currJoinCont >>= \pp =>
       if pp.sync `elem` syncs evsAfterCurr
         then Nothing                             -- then someone else will raise this
-        else Just $ {time := currEvTime} pp.ev   -- no one that blocks is left
+        else Just $ {ctx := pp.postCtx} ev       -- no one that blocks is left
 
 ------------------------------
 --- Interesting properties ---
