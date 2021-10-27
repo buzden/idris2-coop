@@ -164,7 +164,7 @@ runCoop co = runLeftEvents [Ev !currentTime $ Ctx co Nothing] where
     -- All actions of form `patterm => pure [Ev ..., ...]` can be thought as a rewriting rule upon the list of events.
     newEvsAfterRunningCurr : m (List $ Event m)
     newEvsAfterRunningCurr = case currCoop of
-      Point x                        => x $> Nil
+      Point x                        => x $> []
       Cooperative l r                => pure [{ctx.coop := l} ev, {ctx.coop := r} ev]
       DelayedTill d                  => pure [{time := d, ctx.coop := Point $ pure ()} ev]
       Sequential (Point y)         f => map (\r => [{ctx.coop := f r} ev]) y
