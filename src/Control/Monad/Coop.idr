@@ -131,7 +131,7 @@ runCoop co = runLeftEvents [Ev !currentTime co Nothing] where
     nextEvs <- if !currentTime >= currEvTime
                then do
                  let newLeftEvs = merge @{TimeOnly_EvOrd} restEvs !newEvsAfterRunningCurr
-                 pure $ merge @{TimeOnly_EvOrd} newLeftEvs $ awakened newLeftEvs
+                 pure $ merge @{TimeOnly_EvOrd} newLeftEvs $ toList $ awakened newLeftEvs
                else
                  -- TODO else wait for the `currEvTime - !currentTime`; or support and perform permanent tasks
                  pure evs
@@ -162,12 +162,11 @@ runCoop co = runLeftEvents [Ev !currentTime co Nothing] where
       Sequential (Cooperative l r) f => let cont = Just $ Postpone uniqueSync $ Ev currEvTime (f ()) currFence in
                                         pure [Ev currEvTime l cont, Ev currEvTime r cont]
 
-    awakened : (evsAfterCurr : List $ Event m) -> List $ Event m
-    awakened evsAfterCurr = case currFence of
-      Nothing => []
-      Just pp => if pp.sync `elem` syncs evsAfterCurr
-                   then []                             -- then someone else will raise this
-                   else [{time := currEvTime} pp.ev]   -- no one that blocks is left
+    awakened : (evsAfterCurr : List $ Event m) -> Maybe $ Event m
+    awakened evsAfterCurr = currFence >>= \pp =>
+      if pp.sync `elem` syncs evsAfterCurr
+        then Nothing                             -- then someone else will raise this
+        else Just $ {time := currEvTime} pp.ev   -- no one that blocks is left
 
 ------------------------------
 --- Interesting properties ---
