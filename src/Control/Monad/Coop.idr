@@ -132,7 +132,7 @@ runCoop co = runLeftEvents [Ev !currentTime co Nothing] where
   covering
   runLeftEvents : List (Event m) -> m Unit
   runLeftEvents [] = pure ()
-  runLeftEvents evs@((Ev currEvTime currCoop currFence)::restEvs) = do
+  runLeftEvents evs@(ev@(Ev currEvTime currCoop currJoinCont)::restEvs) = do
     nextEvs <- if !currentTime >= currEvTime
                then do
                  let newLeftEvs = merge @{TimeOnly_EvOrd} restEvs !newEvsAfterRunningCurr
@@ -161,16 +161,16 @@ runCoop co = runLeftEvents [Ev !currentTime co Nothing] where
     newEvsAfterRunningCurr : m (List $ Event m)
     newEvsAfterRunningCurr = case currCoop of
       Point x                        => x $> Nil
-      Cooperative l r                => pure [Ev currEvTime l currFence, Ev currEvTime r currFence]
-      DelayedTill d                  => pure [Ev d (Point $ pure ()) currFence] -- this enables currFence to be run when appropriate (delayed)
-      Sequential (Point y)         f => map (\r => [Ev currEvTime (f r) currFence]) y
-      Sequential (Sequential y g)  f => pure [Ev currEvTime (Sequential y $ g >=> f) currFence]
-      Sequential (DelayedTill d)   f => pure [Ev d (f ()) currFence]
-      Sequential (Cooperative l r) f => let cont = Just $ Postpone uniqueSync $ Ev currEvTime (f ()) currFence in
-                                        pure [Ev currEvTime l cont, Ev currEvTime r cont]
+      Cooperative l r                => pure [{coop := l} ev, {coop := r} ev]
+      DelayedTill d                  => pure [{time := d, coop := Point $ pure ()} ev]
+      Sequential (Point y)         f => map (\r => [{coop := f r} ev]) y
+      Sequential (Sequential y g)  f => pure [{coop := Sequential y $ g >=> f} ev]
+      Sequential (DelayedTill d)   f => pure [{time := d, coop := f ()} ev]
+      Sequential (Cooperative l r) f => let cont : Maybe (Postponed m) = Just $ Postpone uniqueSync $ {coop := f ()} ev in
+                                        pure [{coop := l, joinCont := cont} ev, {coop := r, joinCont := cont} ev]
 
     awakened : (evsAfterCurr : List $ Event m) -> Maybe $ Event m
-    awakened evsAfterCurr = currFence >>= \pp =>
+    awakened evsAfterCurr = currJoinCont >>= \pp =>
       if pp.sync `elem` syncs evsAfterCurr
         then Nothing                             -- then someone else will raise this
         else Just $ {time := currEvTime} pp.ev   -- no one that blocks is left
