@@ -119,6 +119,11 @@ mutual
 [TimeOnly_EvOrd] Ord (Event m) using TimeOnly_EvEq where
   compare = compare `on` time
 
+-- insert an element to a sorted list producing a sorted list
+insertOrd : Ord a => a -> List a -> List a
+insertOrd new []           = [new]
+insertOrd new orig@(x::xs) = if new < x then new :: orig else x :: insertOrd new xs
+
 export covering
 runCoop : (Monad m, Timed m) => Coop m Unit -> m Unit
 runCoop co = runLeftEvents [Ev !currentTime co Nothing] where
@@ -131,7 +136,9 @@ runCoop co = runLeftEvents [Ev !currentTime co Nothing] where
     nextEvs <- if !currentTime >= currEvTime
                then do
                  let newLeftEvs = merge @{TimeOnly_EvOrd} restEvs !newEvsAfterRunningCurr
-                 pure $ merge @{TimeOnly_EvOrd} newLeftEvs $ toList $ awakened newLeftEvs
+                 pure $ case awakened newLeftEvs of
+                          Nothing => newLeftEvs
+                          Just aw => insertOrd @{TimeOnly_EvOrd} aw newLeftEvs
                else
                  -- TODO else wait for the `currEvTime - !currentTime`; or support and perform permanent tasks
                  pure evs
