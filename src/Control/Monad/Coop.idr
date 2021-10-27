@@ -95,19 +95,21 @@ MonadTrans Coop where
 Sync : Type
 Sync = Nat
 
-record Postponed m where
-  constructor Postpone
-  sync : Sync
-  postponed : Coop m y
+mutual
 
-record Event m where
-  constructor Ev
-  time  : Time
-  coop  : Coop m x
-  -- Two present fences with the same sync are meant to be blocking each other.
-  -- Postponed `Coop m y` needs to be sheduled only when all events with its sync are over.
-  -- `Sync` type is a comparable type and is a workaround of uncomparability of `Coop`.
-  fence : List $ Postponed m
+  record Postponed (0 m : Type -> Type) where
+    constructor Postpone
+    sync : Sync
+    ev   : Event m -- time of this should be ignored
+
+  record Event (0 m : Type -> Type) where
+    constructor Ev
+    time : Time
+    coop : Coop m x
+    -- Two present postponed events with the same sync are meant to be blocking each other.
+    -- Postponed event needs to be sheduled only when all events with its sync are over.
+    -- `Sync` type is a comparable type and is a workaround of uncomparability of `Coop`.
+    joinCont : Maybe $ Postponed m
 
 -- The following comparison is only according to the time; this will incorrectly work for sets.
 -- Equally timed events with different actions are considered to be equal with `==` relation.
@@ -119,7 +121,7 @@ record Event m where
 
 export covering
 runCoop : (Monad m, Timed m) => Coop m Unit -> m Unit
-runCoop co = runLeftEvents [Ev !currentTime co []] where
+runCoop co = runLeftEvents [Ev !currentTime co Nothing] where
 
   -- TODO to replace list with a sortedness-preserving kinda-list
   covering
@@ -137,7 +139,9 @@ runCoop co = runLeftEvents [Ev !currentTime co []] where
 
   where
     syncs : List (Event m) -> List Sync
-    syncs evs = evs >>= map sync . fence
+    syncs evs = evs >>= syncs' where
+      syncs' : Event m -> List Sync
+      syncs' = maybe [] (\pp => pp.sync :: syncs' pp.ev) . joinCont
 
     uniqueSync : Lazy Sync
     uniqueSync = case syncs evs of
@@ -155,15 +159,15 @@ runCoop co = runLeftEvents [Ev !currentTime co []] where
       Sequential (Point y)         f => map (\r => [Ev currEvTime (f r) currFence]) y
       Sequential (Sequential y g)  f => pure [Ev currEvTime (Sequential y $ g >=> f) currFence]
       Sequential (DelayedTill d)   f => pure [Ev d (f ()) currFence]
-      Sequential (Cooperative l r) f => let newFence = Postpone uniqueSync (f ()) :: currFence in -- coop in the `currFence` needs to be run after the `f ()`
-                                        pure [Ev currEvTime l newFence, Ev currEvTime r newFence]
+      Sequential (Cooperative l r) f => let cont = Just $ Postpone uniqueSync $ Ev currEvTime (f ()) currFence in
+                                        pure [Ev currEvTime l cont, Ev currEvTime r cont]
 
     awakened : (evsAfterCurr : List $ Event m) -> List $ Event m
     awakened evsAfterCurr = case currFence of
-      []           => []
-      pp::subFence => if pp.sync `elem` syncs evsAfterCurr
-                        then []                                    -- then someone else will raise this
-                        else [Ev currEvTime pp.postponed subFence] -- no one that blocks is left
+      Nothing => []
+      Just pp => if pp.sync `elem` syncs evsAfterCurr
+                   then []                             -- then someone else will raise this
+                   else [{time := currEvTime} pp.ev]   -- no one that blocks is left
 
 ------------------------------
 --- Interesting properties ---
