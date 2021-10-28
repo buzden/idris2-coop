@@ -100,9 +100,9 @@ mutual
   record Postponed (0 m : Type -> Type) where
     constructor Postpone
     sync : Sync
-    postCtx : CoopCtx m x
+    postCtx : CoopCtx m
 
-  record CoopCtx (0 m : Type -> Type) (0 x : Type) where
+  record CoopCtx (0 m : Type -> Type) where
     constructor Ctx
     coop : Coop m x
     -- Two present postponed events with the same sync are meant to be blocking each other.
@@ -113,7 +113,7 @@ mutual
 record Event (0 m : Type -> Type) where
   constructor Ev
   time : Time
-  ctx  : CoopCtx m x
+  ctx  : CoopCtx m
 
 -- The following comparison is only according to the time; this will incorrectly work for sets.
 -- Equally timed events with different actions are considered to be equal with `==` relation.
@@ -155,7 +155,7 @@ runCoop co = runLeftEvents [Ev !currentTime $ Ctx co Nothing] where
   where
     syncs : Events m -> List Sync
     syncs evs = evs >>= \ev => syncs' ev.ctx where
-      syncs' : CoopCtx m a -> List Sync
+      syncs' : CoopCtx m -> List Sync
       syncs' = maybe [] (\pp => pp.sync :: syncs' pp.postCtx) . joinCont
 
     uniqueSync : Lazy Sync
