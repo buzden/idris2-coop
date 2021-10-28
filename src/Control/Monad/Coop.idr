@@ -132,9 +132,13 @@ export covering
 runCoop : (Monad m, Timed m) => Coop m Unit -> m Unit
 runCoop co = runLeftEvents [Ev !currentTime $ Ctx co Nothing] where
 
+  %inline
+  Events : (Type -> Type) -> Type
+  Events m = List $ Event m
+
   -- TODO to replace list with a sortedness-preserving kinda-list
   covering
-  runLeftEvents : List (Event m) -> m Unit
+  runLeftEvents : Events m -> m Unit
   runLeftEvents [] = pure ()
   runLeftEvents evs@(ev@(Ev currEvTime $ Ctx currCoop currJoinCont)::restEvs) = do
     nextEvs <- if !currentTime >= currEvTime
@@ -149,7 +153,7 @@ runCoop co = runLeftEvents [Ev !currentTime $ Ctx co Nothing] where
     runLeftEvents nextEvs
 
   where
-    syncs : List (Event m) -> List Sync
+    syncs : Events m -> List Sync
     syncs evs = evs >>= \ev => syncs' ev.ctx where
       syncs' : CoopCtx m a -> List Sync
       syncs' = maybe [] (\pp => pp.sync :: syncs' pp.postCtx) . joinCont
@@ -162,7 +166,7 @@ runCoop co = runLeftEvents [Ev !currentTime $ Ctx co Nothing] where
         Z   => S $ foldl max 0 ss -- or maximal plus 1
 
     -- All actions of form `patterm => pure [Ev ..., ...]` can be thought as a rewriting rule upon the list of events.
-    newEvsAfterRunningCurr : m (List $ Event m)
+    newEvsAfterRunningCurr : m (Events m)
     newEvsAfterRunningCurr = case currCoop of
       Point x                        => x $> []
       Cooperative l r                => pure [{ctx.coop := l} ev, {ctx.coop := r} ev]
@@ -173,7 +177,7 @@ runCoop co = runLeftEvents [Ev !currentTime $ Ctx co Nothing] where
       Sequential (Cooperative l r) f => let cont = Just $ Postpone uniqueSync $ {coop := f ()} ev.ctx in
                                             pure [{ctx := Ctx l cont} ev, {ctx := Ctx r cont} ev]
 
-    awakened : (evsAfterCurr : List $ Event m) -> Maybe $ Event m
+    awakened : (evsAfterCurr : Events m) -> Maybe $ Event m
     awakened evsAfterCurr = currJoinCont >>= \pp =>
       if pp.sync `elem` syncs evsAfterCurr
         then Nothing                             -- then someone else will raise this
