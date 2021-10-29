@@ -101,20 +101,20 @@ Sync = Nat
 
 mutual
 
-  record Postponed (0 m : Type -> Type) where
+  record Postponed (m : Type -> Type) where
     constructor Postpone
     sync : Sync
     postCtx : CoopCtx m
 
-  record CoopCtx (0 m : Type -> Type) where
+  record CoopCtx (m : Type -> Type) where
     constructor Ctx
-    coop : Coop m x
+    coop : Coop m a
     -- Two present postponed events with the same sync are meant to be blocking each other.
     -- Postponed event needs to be sheduled only when all events with its sync are over.
     -- `Sync` type is a comparable type and is a workaround of uncomparability of `Coop`.
     joinCont : Maybe $ Postponed m
 
-record Event (0 m : Type -> Type) where
+record Event (m : Type -> Type) where
   constructor Ev
   time : Time
   ctx  : CoopCtx m
