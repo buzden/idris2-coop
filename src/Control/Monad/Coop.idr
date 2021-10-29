@@ -94,6 +94,8 @@ MonadTrans Coop where
 --- Interpreter ---
 -------------------
 
+--- Data types describing discrete events ---
+
 Sync : Type
 Sync = Nat
 
@@ -117,36 +119,45 @@ record Event (0 m : Type -> Type) where
   time : Time
   ctx  : CoopCtx m
 
+--- List of events ---
+
+%inline
+Events : (Type -> Type) -> Type
+Events m = List $ Event m
+
 -- insert an element to a sorted list producing a sorted list
 insertBy : (lt : a -> a -> Bool) -> a -> List a -> List a
 insertBy _  new []           = [new]
 insertBy lt new orig@(x::xs) = if new `lt` x then new :: orig else x :: insertBy lt new xs
 
+%inline
+insertTimed : Event m -> Events m -> Events m
+insertTimed = insertBy $ (<) `on` time
+
+--- Syncs stuff ---
+
+covering
+syncs : Events m -> LazyList Sync
+syncs [] = []
+syncs (ev::evs) = syncsOfCtx ev.ctx ++ syncs evs where
+  syncsOfCtx : CoopCtx m -> LazyList Sync
+  syncsOfCtx = maybe [] (\pp => pp.sync :: syncsOfCtx pp.postCtx) . joinCont
+
+%inline
+isSyncPresentIn : Events m -> Sync -> Bool
+isSyncPresentIn evs sy = Lazy.any (== sy) $ syncs evs
+
+newUniqueSync : LazyList Sync -> Sync
+newUniqueSync [] = Z
+newUniqueSync (x::xs) = case foldrLazy (\c, (mi, ma) => (mi `min` c, ma `max` c)) (x, 0) xs of
+  (S x, _) => x   -- either minimal minus 1
+  (Z  , y) => S y -- or maximal plus 1
+
+--- The run loop ---
+
 export covering
 runCoop : (Monad m, Timed m) => Coop m Unit -> m Unit
 runCoop co = runLeftEvents [Ev !currentTime $ Ctx co Nothing] where
-
-  %inline
-  Events : (Type -> Type) -> Type
-  Events m = List $ Event m
-
-  insertTimed : Event m -> Events m -> Events m
-  insertTimed = insertBy $ (<) `on` time
-
-  syncs : Events m -> LazyList Sync
-  syncs [] = []
-  syncs (ev::evs) = syncsOfCtx ev.ctx ++ syncs evs where
-    syncsOfCtx : CoopCtx m -> LazyList Sync
-    syncsOfCtx = maybe [] (\pp => pp.sync :: syncsOfCtx pp.postCtx) . joinCont
-
-  isSyncPresentIn : Events m -> Sync -> Bool
-  isSyncPresentIn evs sy = Lazy.any (== sy) $ syncs evs
-
-  newUniqueSync : LazyList Sync -> Sync
-  newUniqueSync [] = Z
-  newUniqueSync (x::xs) = case foldrLazy (\c, (mi, ma) => (mi `min` c, ma `max` c)) (x, 0) xs of
-    (S x, _) => x   -- either minimal minus 1
-    (Z  , y) => S y -- or maximal plus 1
 
   -- we could have `Event m -> m (Events m -> Events m)`
   runEvent : Event m -> (rest : Events m) -> m (Events m)
@@ -166,7 +177,6 @@ runCoop co = runLeftEvents [Ev !currentTime $ Ctx co Nothing] where
         Nothing => rest                                 -- no postponed event or someone else will raise this
         Just pp => {ctx := pp.postCtx} ev :: rest       -- no one that blocks is left
 
-  covering
   runLeftEvents : Events m -> m Unit
   runLeftEvents [] = pure ()
   runLeftEvents evs@(currEv::restEvs) = do
