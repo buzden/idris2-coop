@@ -156,7 +156,7 @@ newUniqueSync (x::xs) = case foldrLazy (\c, (mi, ma) => (mi `min` c, ma `max` c)
 --- The run loop ---
 
 export covering
-runCoop : (Monad m, Timed m) => Coop m Unit -> m Unit
+runCoop : Timed m => Monad m => Coop m Unit -> m Unit
 runCoop co = runLeftEvents [Ev !currentTime $ Ctx co Nothing] where
 
   -- we could have `Event m -> m (Events m -> Events m)`
