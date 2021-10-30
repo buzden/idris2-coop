@@ -155,27 +155,30 @@ newUniqueSync (x::xs) = case foldrLazy (\c, (mi, ma) => (mi `min` c, ma `max` c)
 
 --- The run loop ---
 
+%inline
+runEvent : Monad m => MonadTrans t =>
+           MonadState (Events m) (t m) =>
+           Event m -> t m Unit
+runEvent ev@(Ev _ $ Ctx {}) = case ev.ctx.coop of
+  Point x                        => lift x *> modify addAwakenedIfNeeded
+  Cooperative l r                => modify $ \rest => {ctx.coop := l} ev :: {ctx.coop := r} ev :: rest
+  DelayedTill d                  => modify $ insertTimed $ {time := d, ctx.coop := Point $ pure ()} ev
+  Sequential (Point x)         f => lift x >>= \r => modify $ (::) $ {ctx.coop := f r} ev
+  Sequential (Sequential x g)  f => modify $ (::) $ {ctx.coop := Sequential x $ g >=> f} ev
+  Sequential (DelayedTill d)   f => modify $ insertTimed $ {time := d, ctx.coop := f ()} ev
+  Sequential (Cooperative l r) f => do rest <- get
+                                       let uniqueSync = newUniqueSync $ syncs $ ev::rest
+                                       let cont = Just $ Postpone uniqueSync $ {coop := f ()} ev.ctx
+                                       put $ {ctx := Ctx l cont} ev :: {ctx := Ctx r cont} ev :: rest
+  where
+    addAwakenedIfNeeded : Events m -> Events m
+    addAwakenedIfNeeded rest = case filter (not . isSyncPresentIn rest . sync) ev.ctx.joinCont of
+      Nothing => rest                                 -- no postponed event or someone else will raise this
+      Just pp => {ctx := pp.postCtx} ev :: rest       -- no one that blocks is left
+
 export covering
 runCoop : Timed m => Monad m => Coop m Unit -> m Unit
 runCoop co = evalStateT [Ev !currentTime $ Ctx co Nothing] runLeftEvents {stateType=Events _} where
-
-  runEvent : MonadTrans t => MonadState (Events m) (t m) => Event m -> t m Unit
-  runEvent ev@(Ev _ $ Ctx {}) = case ev.ctx.coop of
-    Point x                        => lift x *> modify addAwakenedIfNeeded
-    Cooperative l r                => modify $ \rest => {ctx.coop := l} ev :: {ctx.coop := r} ev :: rest
-    DelayedTill d                  => modify $ insertTimed $ {time := d, ctx.coop := Point $ pure ()} ev
-    Sequential (Point x)         f => lift x >>= \r => modify $ (::) $ {ctx.coop := f r} ev
-    Sequential (Sequential x g)  f => modify $ (::) $ {ctx.coop := Sequential x $ g >=> f} ev
-    Sequential (DelayedTill d)   f => modify $ insertTimed $ {time := d, ctx.coop := f ()} ev
-    Sequential (Cooperative l r) f => do rest <- get
-                                         let uniqueSync = newUniqueSync $ syncs $ ev::rest
-                                         let cont = Just $ Postpone uniqueSync $ {coop := f ()} ev.ctx
-                                         put $ {ctx := Ctx l cont} ev :: {ctx := Ctx r cont} ev :: rest
-    where
-      addAwakenedIfNeeded : Events m -> Events m
-      addAwakenedIfNeeded rest = case filter (not . isSyncPresentIn rest . sync) ev.ctx.joinCont of
-        Nothing => rest                                 -- no postponed event or someone else will raise this
-        Just pp => {ctx := pp.postCtx} ev :: rest       -- no one that blocks is left
 
   runLeftEvents : MonadTrans t => MonadState (Events m) (t m) => t m Unit
   runLeftEvents = case !get of
