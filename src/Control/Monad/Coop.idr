@@ -157,9 +157,9 @@ newUniqueSync (x::xs) = case foldrLazy (\c, (mi, ma) => (mi `min` c, ma `max` c)
 
 export covering
 runCoop : Timed m => Monad m => Coop m Unit -> m Unit
-runCoop co = evalStateT [Ev !currentTime $ Ctx co Nothing] runLeftEvents where
+runCoop co = evalStateT [Ev !currentTime $ Ctx co Nothing] runLeftEvents {stateType=Events _} where
 
-  runEvent : Event m -> StateT (Events m) m Unit
+  runEvent : MonadTrans t => MonadState (Events m) (t m) => Event m -> t m Unit
   runEvent ev@(Ev _ $ Ctx {}) = case ev.ctx.coop of
     Point x                        => lift x *> modify addAwakenedIfNeeded
     Cooperative l r                => modify $ \rest => {ctx.coop := l} ev :: {ctx.coop := r} ev :: rest
@@ -177,7 +177,7 @@ runCoop co = evalStateT [Ev !currentTime $ Ctx co Nothing] runLeftEvents where
         Nothing => rest                                 -- no postponed event or someone else will raise this
         Just pp => {ctx := pp.postCtx} ev :: rest       -- no one that blocks is left
 
-  runLeftEvents : StateT (Events m) m Unit
+  runLeftEvents : MonadTrans t => MonadState (Events m) (t m) => t m Unit
   runLeftEvents = case !get of
     [] => pure ()
     evs@(currEv::restEvs) => do
