@@ -158,8 +158,8 @@ runEvent : Monad m => MonadTrans t => Monad (t m) =>
            Event m -> t m Unit
 runEvent ev@(Ev _ $ Ctx {}) = case ev.ctx.coop of
   Point x                        => lift x *> tryToAwakenPostponed
-  Cooperative l r                => modify $ \rest : Events m => {ctx.coop := l} ev :: {ctx.coop := r} ev :: rest
-  DelayedTill d                  => modify $ insertTimed $ {time := d, ctx.coop := Point $ pure ()} ev
+  c@(Cooperative _ _)            => modify $ (::) $ {ctx.coop := c >> pure ()} ev     -- manage as `Sequential (Cooperative _ _) _`
+  c@(DelayedTill _)              => modify $ (::) $ {ctx.coop := c >> pure ()} ev     -- manage as `Sequential (DelayedTill _)   _`
   Sequential (Point x)         f => lift x >>= \r => modify $ (::) $ {ctx.coop := f r} ev
   Sequential (Sequential x g)  f => modify $ (::) $ {ctx.coop := Sequential x $ g >=> f} ev
   Sequential (DelayedTill d)   f => modify $ insertTimed $ {time := d, ctx.coop := f ()} ev
