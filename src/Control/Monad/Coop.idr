@@ -136,12 +136,11 @@ insertTimed = insertBy $ (<) `on` time
 
 --- Syncs stuff ---
 
-covering
 syncs : Events m -> LazyList Sync
 syncs [] = []
 syncs (ev::evs) = syncsOfCtx ev.ctx ++ syncs evs where
   syncsOfCtx : CoopCtx m -> LazyList Sync
-  syncsOfCtx = maybe [] (\pp => pp.sync :: syncsOfCtx pp.postCtx) . joinCont
+  syncsOfCtx = maybe [] (\pp => pp.sync :: assert_total syncsOfCtx pp.postCtx) . joinCont
 
 %inline
 isSyncPresentIn : Events m -> Sync -> Bool
