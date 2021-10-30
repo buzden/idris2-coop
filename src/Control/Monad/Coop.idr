@@ -5,6 +5,7 @@ import public System.Time
 import Data.Maybe
 import Data.List
 import Data.List.Lazy
+import Data.SortedMap
 
 import Control.Monad.State
 import Control.Monad.Trans
@@ -100,20 +101,13 @@ MonadTrans Coop where
 Sync : Type
 Sync = Nat
 
-mutual
-
-  record Postponed (m : Type -> Type) where
-    constructor Postpone
-    sync : Sync
-    postCtx : CoopCtx m
-
-  record CoopCtx (m : Type -> Type) where
-    constructor Ctx
-    coop : Coop m a
-    -- Two present postponed events with the same sync are meant to be blocking each other.
-    -- Postponed event needs to be sheduled only when all events with its sync are over.
-    -- `Sync` type is a comparable type and is a workaround of uncomparability of `Coop`.
-    joinCont : Maybe $ Postponed m
+record CoopCtx (m : Type -> Type) where
+  constructor Ctx
+  coop : Coop m a
+  -- Two present postponed events with the same sync are meant to be blocking each other.
+  -- Postponed event needs to be sheduled only when all events with its sync are over.
+  -- `Sync` type is a comparable type and is a workaround of uncomparability of `Coop`.
+  joinSync : Maybe Sync
 
 record Event (m : Type -> Type) where
   constructor Ev
@@ -124,7 +118,7 @@ record Event (m : Type -> Type) where
 
 %inline
 Events : (Type -> Type) -> Type
-Events m = List $ Event m
+Events = List . Event
 
 -- insert an element to a sorted list producing a sorted list
 insertBy : (lt : a -> a -> Bool) -> a -> List a -> List a
@@ -137,51 +131,68 @@ insertTimed = insertBy $ (<) `on` time
 
 --- Syncs stuff ---
 
-syncs : Events m -> LazyList Sync
-syncs [] = []
-syncs (ev::evs) = syncsOfCtx ev.ctx ++ syncs evs where
-  syncsOfCtx : CoopCtx m -> LazyList Sync
-  syncsOfCtx = maybe [] (\pp => pp.sync :: assert_total syncsOfCtx pp.postCtx) . joinCont
+record Postponed (m : Type -> Type) where
+  constructor Postpone
+  postCtx : CoopCtx m
+  -- This postponed continuation is waining for two executions.
+  -- When one of them is completed, this must be `True`.
+  oneIsCompleted : Bool
 
-%inline
-isSyncPresentIn : Events m -> Sync -> Bool
-isSyncPresentIn evs sy = Lazy.any (== sy) $ syncs evs
+Syncs : (Type -> Type) -> Type
+Syncs = SortedMap Sync . Postponed
 
-newUniqueSync : LazyList Sync -> Sync
-newUniqueSync [] = Z
-newUniqueSync (x::xs) = case foldrLazy (\c, (mi, ma) => (mi `min` c, ma `max` c)) (x, 0) xs of
-  (S x, _) => x   -- either minimal minus 1
-  (Z  , y) => S y -- or maximal plus 1
+newUniqueSync : MonadState (Syncs m) f => f Sync
+newUniqueSync = do
+  syncs <- get
+  pure $ case fst <$> leftMost syncs of
+    Nothing    => Z
+    Just (S x) => x                                       -- either minimal minus 1
+    Just Z     => maybe Z (S . fst) $ rightMost syncs     -- or maximal plus 1
 
 --- The run loop ---
 
 %inline
-runEvent : Monad m => MonadTrans t =>
+runEvent : Monad m => MonadTrans t => Monad (t m) =>
            MonadState (Events m) (t m) =>
+           MonadState (Syncs m) (t m) =>
            Event m -> t m Unit
 runEvent ev@(Ev _ $ Ctx {}) = case ev.ctx.coop of
-  Point x                        => lift x *> modify addAwakenedIfNeeded
-  Cooperative l r                => modify $ \rest => {ctx.coop := l} ev :: {ctx.coop := r} ev :: rest
+  Point x                        => lift x *> tryToAwakenPostponed
+  Cooperative l r                => modify $ \rest : Events m => {ctx.coop := l} ev :: {ctx.coop := r} ev :: rest
   DelayedTill d                  => modify $ insertTimed $ {time := d, ctx.coop := Point $ pure ()} ev
   Sequential (Point x)         f => lift x >>= \r => modify $ (::) $ {ctx.coop := f r} ev
   Sequential (Sequential x g)  f => modify $ (::) $ {ctx.coop := Sequential x $ g >=> f} ev
   Sequential (DelayedTill d)   f => modify $ insertTimed $ {time := d, ctx.coop := f ()} ev
-  Sequential (Cooperative l r) f => do rest <- get
-                                       let uniqueSync = newUniqueSync $ syncs $ ev::rest
-                                       let cont = Just $ Postpone uniqueSync $ {coop := f ()} ev.ctx
-                                       put $ {ctx := Ctx l cont} ev :: {ctx := Ctx r cont} ev :: rest
+  Sequential (Cooperative l r) f => do uniqueSync <- newUniqueSync
+                                       modify $ insert uniqueSync $ Postpone ({coop := f ()} ev.ctx) False
+                                       modify $ \rest : Events m => {ctx := Ctx l $ Just uniqueSync} ev :: {ctx := Ctx r $ Just uniqueSync} ev :: rest
   where
-    addAwakenedIfNeeded : Events m -> Events m
-    addAwakenedIfNeeded rest = case filter (not . isSyncPresentIn rest . sync) ev.ctx.joinCont of
-      Nothing => rest                                 -- no postponed event or someone else will raise this
-      Just pp => {ctx := pp.postCtx} ev :: rest       -- no one that blocks is left
+    tryToAwakenPostponed : t m Unit
+    tryToAwakenPostponed =
+      whenJust (ev.ctx.joinSync) $ \sy => do
+        syncs <- get
+        whenJust (lookup sy syncs) $ \pp =>
+          if pp.oneIsCompleted
+          then do                                     -- no one that blocks is left
+            modify $ (::) $ {ctx := pp.postCtx} ev
+            put $ delete sy syncs
+          else                                        -- someone else will raise this continuation
+            put $ insert sy ({oneIsCompleted := True} pp) syncs
+
+Monad m => MonadState l (StateT (l, r) m) where
+  get = Builtin.fst <$> get
+  put = modify . mapFst . const
+
+Monad m => MonadState r (StateT (l, r) m) where
+  get = Builtin.snd <$> get
+  put = modify . mapSnd . const
 
 export covering
 runCoop : Timed m => Monad m => Coop m Unit -> m Unit
-runCoop co = evalStateT [Ev !currentTime $ Ctx co Nothing] runLeftEvents {stateType=Events _} where
+runCoop co = evalStateT ([Ev !currentTime $ Ctx co Nothing], empty) runLeftEvents {stateType=(Events m, Syncs m)} where
 
-  runLeftEvents : MonadTrans t => MonadState (Events m) (t m) => t m Unit
-  runLeftEvents = case !get of
+  runLeftEvents : MonadTrans t => Monad (t m) => MonadState (Events m) (t m) => MonadState (Syncs m) (t m) => t m Unit
+  runLeftEvents = case !(get {stateType=Events _}) of
     [] => pure ()
     evs@(currEv::restEvs) => do
       if !(lift currentTime) >= currEv.time
