@@ -8,6 +8,7 @@ import Data.List.Lazy
 import Data.SortedMap
 
 import Control.Monad.State
+import Control.Monad.State.Pair
 import Control.Monad.Trans
 
 %default total
@@ -173,14 +174,6 @@ runEvent ev@(Ev _ $ Ctx {}) = case ev.ctx.coop of
             put $ delete sy syncs
           else                                        -- someone else will raise this continuation
             put $ insert sy ({oneIsCompleted := True} pp) syncs
-
-Monad m => MonadState l (StateT (l, r) m) where
-  get = Builtin.fst <$> get
-  put = modify . mapFst . const
-
-Monad m => MonadState r (StateT (l, r) m) where
-  get = Builtin.snd <$> get
-  put = modify . mapSnd . const
 
 export covering
 runCoop : Timed m => Monad m => Coop m Unit -> m Unit
