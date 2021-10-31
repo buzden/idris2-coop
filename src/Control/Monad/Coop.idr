@@ -71,6 +71,11 @@ Applicative m => Zippable (Coop m) where
   unzipWith f ab = (fst . f <$> ab, snd . f <$> ab)
   unzipWith3 f abc = (fst . f <$> abc, fst . snd . f <$> abc, snd . snd . f <$> abc)
 
+export
+[Concurrent] Applicative m => Applicative (Coop m) where
+  pure  = Point . pure
+  (<*>) = zipWith apply
+
 public export %inline
 par : Applicative m => Coop m Unit -> Coop m Unit -> Coop m Unit
 par = ignore .: zip
