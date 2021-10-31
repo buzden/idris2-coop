@@ -6,21 +6,13 @@ import Data.Maybe
 import Data.List
 import Data.List.Lazy
 import Data.SortedMap
+import public Data.Zippable
 
 import Control.Monad.State
 import Control.Monad.State.Pair
 import Control.Monad.Trans
 
 %default total
-
-------------------
---- Interfaces ---
-------------------
-
-public export
-interface Parallel m where
-  -- Alternative-like operator with parallel semantics and unavailable results of separate computations
-  (<||>) : m Unit -> m Unit -> m Unit
 
 ------------
 --- Data ---
@@ -69,8 +61,19 @@ Monad m => Monad (Coop m) where
   (>>=) = Sequential
 
 export
-Applicative m => Parallel (Coop m) where
-  (<||>) = ignore .: Cooperative
+Applicative m => Zippable (Coop m) where
+  zip = Cooperative
+  zipWith f = map (uncurry f) .: Cooperative
+
+  zip3 a b c = a `Cooperative` (b `Cooperative` c)
+  zipWith3 f a b c = zip3 a b c <&> \(x, y, z) => f x y z
+
+  unzipWith f ab = (fst . f <$> ab, snd . f <$> ab)
+  unzipWith3 f abc = (fst . f <$> abc, fst . snd . f <$> abc, snd . snd . f <$> abc)
+
+public export %inline
+par : Applicative m => Coop m Unit -> Coop m Unit -> Coop m Unit
+par = ignore .: zip
 
 export
 Monad m => DelayableTill (Coop m) where
