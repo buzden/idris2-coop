@@ -33,4 +33,4 @@ main = do putStrLn "before coop"
       sleepFor 350.millis
       printTime offset "                     proc 2, before 750"
       sleepFor 750.millis)
-
+  printTime offset "end"
