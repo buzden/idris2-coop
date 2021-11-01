@@ -30,3 +30,4 @@ jobs:
           DEFAULT_BRANCH: master
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           IGNORE_GENERATED_FILES: true
+          FILTER_REGEX_EXCLUDE: '.*/tests/.*/test.ipkg' # workaround for https://github.com/kucherenko/jscpd/issues/481
