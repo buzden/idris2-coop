@@ -109,7 +109,7 @@ data LeftOrRight = Left | Right
 
 record CoopCtx (m : Type -> Type) where
   constructor Ctx
-  coop : Coop m a
+  coop : Coop m actionRetTy
   -- Two present postponed events with the same sync are meant to be blocking each other.
   -- Postponed event needs to be sheduled only when all events with its sync are over.
   -- `Sync` type is a comparable type and is a workaround of uncomparability of `Coop`.
@@ -139,10 +139,10 @@ insertTimed = insertBy $ (<) `on` time
 
 record Postponed (m : Type -> Type) where
   constructor Postpone
-  postCtx : (l, r) -> CoopCtx m
+  postCtx : (contLTy, contRTy) -> CoopCtx m
   -- This postponed continuation is waining for two executions.
   -- When one of them is completed, the result should be present in this field.
-  completedHalf : Maybe c
+  completedHalf : Maybe completedHaftTy
 
 Syncs : (Type -> Type) -> Type
 Syncs = SortedMap Sync . Postponed
