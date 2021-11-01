@@ -23,7 +23,7 @@ main = do putStrLn "before coop"
           runCoop $ do
   offset <- millis
   printTime offset "start"
-  (<||>)
+  ignore $ zip
     (for 5 $ do
       printTime offset "proc 1, before 1000"
       sleepFor 1.seconds

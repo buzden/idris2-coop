@@ -6,21 +6,13 @@ import Data.Maybe
 import Data.List
 import Data.List.Lazy
 import Data.SortedMap
+import public Data.Zippable
 
 import Control.Monad.State
 import Control.Monad.State.Pair
 import Control.Monad.Trans
 
 %default total
-
-------------------
---- Interfaces ---
-------------------
-
-public export
-interface Parallel m where
-  -- Alternative-like operator with parallel semantics and unavailable results of separate computations
-  (<||>) : m Unit -> m Unit -> m Unit
 
 ------------
 --- Data ---
@@ -30,7 +22,7 @@ export
 data Coop : (m : Type -> Type) -> (a : Type) -> Type where
   Point       : m a -> Coop m a
   Sequential  : Coop m a -> (a -> Coop m b) -> Coop m b
-  Cooperative : Coop m a -> Coop m b -> Coop m Unit
+  Cooperative : Coop m a -> Coop m b -> Coop m (a, b)
   DelayedTill : Time -> Coop m Unit
 
 --------------------------------
@@ -69,8 +61,24 @@ Monad m => Monad (Coop m) where
   (>>=) = Sequential
 
 export
-Parallel (Coop m) where
-  (<||>) = Cooperative
+Applicative m => Zippable (Coop m) where
+  zip = Cooperative
+  zipWith f = map (uncurry f) .: Cooperative
+
+  zip3 a b c = a `Cooperative` (b `Cooperative` c)
+  zipWith3 f a b c = zip3 a b c <&> \(x, y, z) => f x y z
+
+  unzipWith f ab = (fst . f <$> ab, snd . f <$> ab)
+  unzipWith3 f abc = (fst . f <$> abc, fst . snd . f <$> abc, snd . snd . f <$> abc)
+
+export
+[Concurrent] Applicative m => Applicative (Coop m) where
+  pure  = Point . pure
+  (<*>) = zipWith apply
+
+public export %inline
+par : Applicative m => Coop m Unit -> Coop m Unit -> Coop m Unit
+par = ignore .: zip
 
 export
 Monad m => DelayableTill (Coop m) where
@@ -97,13 +105,15 @@ MonadTrans Coop where
 Sync : Type
 Sync = Nat
 
+data LeftOrRight = Left | Right
+
 record CoopCtx (m : Type -> Type) where
   constructor Ctx
   coop : Coop m a
   -- Two present postponed events with the same sync are meant to be blocking each other.
   -- Postponed event needs to be sheduled only when all events with its sync are over.
   -- `Sync` type is a comparable type and is a workaround of uncomparability of `Coop`.
-  joinSync : Maybe Sync
+  joinSync : Maybe (Sync, LeftOrRight)
 
 record Event (m : Type -> Type) where
   constructor Ev
@@ -129,10 +139,10 @@ insertTimed = insertBy $ (<) `on` time
 
 record Postponed (m : Type -> Type) where
   constructor Postpone
-  postCtx : CoopCtx m
+  postCtx : (l, r) -> CoopCtx m
   -- This postponed continuation is waining for two executions.
-  -- When one of them is completed, this must be `True`.
-  oneIsCompleted : Bool
+  -- When one of them is completed, the result should be present in this field.
+  completedHalf : Maybe c
 
 Syncs : (Type -> Type) -> Type
 Syncs = SortedMap Sync . Postponed
@@ -153,27 +163,33 @@ runEvent : Monad m => MonadTrans t => Monad (t m) =>
            MonadState (Syncs m) (t m) =>
            Event m -> t m Unit
 runEvent ev@(Ev _ $ Ctx {}) = case ev.ctx.coop of
-  Point x                        => lift x *> tryToAwakenPostponed
-  c@(Cooperative _ _)            => modify $ (::) $ {ctx.coop := c >> pure ()} ev     -- manage as `Sequential (Cooperative _ _) _`
+  Point x                        => lift x >>= tryToAwakenPostponed
+  c@(Cooperative _ _)            => modify $ (::) $ {ctx.coop := c >>= pure} ev       -- manage as `Sequential (Cooperative _ _) _`
   c@(DelayedTill _)              => modify $ (::) $ {ctx.coop := c >> pure ()} ev     -- manage as `Sequential (DelayedTill _)   _`
   Sequential (Point x)         f => lift x >>= \r => modify $ (::) $ {ctx.coop := f r} ev
   Sequential (Sequential x g)  f => modify $ (::) $ {ctx.coop := Sequential x $ g >=> f} ev
   Sequential (DelayedTill d)   f => modify $ insertTimed $ {time := d, ctx.coop := f ()} ev
   Sequential (Cooperative l r) f => do uniqueSync <- newUniqueSync
-                                       modify $ insert uniqueSync $ Postpone ({coop := f ()} ev.ctx) False
-                                       modify $ \rest : Events m => {ctx := Ctx l $ Just uniqueSync} ev :: {ctx := Ctx r $ Just uniqueSync} ev :: rest
+                                       modify $ insert uniqueSync $ Postpone (\ab => {coop := f ab} ev.ctx) $ Nothing {ty=Unit}
+                                       modify $ \rest : Events m =>
+                                                  {ctx := Ctx l $ Just (uniqueSync, Left )} ev ::
+                                                  {ctx := Ctx r $ Just (uniqueSync, Right)} ev ::
+                                                  rest
   where
-    tryToAwakenPostponed : t m Unit
-    tryToAwakenPostponed =
-      whenJust (ev.ctx.joinSync) $ \sy => do
+    tryToAwakenPostponed : forall a. a -> t m Unit
+    tryToAwakenPostponed myHalf =
+      whenJust ev.ctx.joinSync $ \(sy, iAmLOrR) => do
         syncs <- get
-        whenJust (lookup sy syncs) $ \pp =>
-          if pp.oneIsCompleted
-          then do                                     -- no one that blocks is left
-            modify $ (::) $ {ctx := pp.postCtx} ev
-            put $ delete sy syncs
-          else                                        -- someone else will raise this continuation
-            put $ insert sy ({oneIsCompleted := True} pp) syncs
+        whenJust (SortedMap.lookup sy syncs) $ \pp =>
+          case pp.completedHalf of
+            Just theirHalf => do
+              let newCtx : CoopCtx m = case iAmLOrR of
+                                         Left  => pp.postCtx $ believe_me (myHalf, theirHalf)
+                                         Right => pp.postCtx $ believe_me (theirHalf, myHalf)
+              modify $ (::) $ {ctx := newCtx} ev
+              put $ delete sy syncs
+            Nothing =>
+              put $ insert sy ({completedHalf := Just myHalf} pp) syncs
 
 export covering
 runCoop : Timed m => Monad m => Coop m Unit -> m Unit
