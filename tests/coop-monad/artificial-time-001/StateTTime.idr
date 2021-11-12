@@ -9,6 +9,10 @@ import Data.SnocList
 Timed (State $ SnocList String) where
   currentTime = (.millis) <$> length <$> get
 
+CanSleep (State $ SnocList String) where
+  sleepFor  _ = pure ()
+  sleepTill _ = pure ()
+
 append : MonadState (SnocList a) m => a -> m ()
 append x = modify (:< x)
 

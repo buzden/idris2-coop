@@ -188,7 +188,7 @@ runEvent ev@(Ev _ $ Ctx {}) = case ev.ctx.coop of
               put $ insert sy ({completedHalf := Just myHalf} pp) syncs
 
 export covering
-runCoop : Timed m => Monad m => Coop m Unit -> m Unit
+runCoop : CanSleep m => Monad m => Coop m Unit -> m Unit
 runCoop co = evalStateT ([Ev !currentTime $ Ctx co Nothing], empty) runLeftEvents {stateType=(Events m, Syncs m)} where
 
   runLeftEvents : MonadTrans t => Monad (t m) => MonadState (Events m) (t m) => MonadState (Syncs m) (t m) => t m Unit
@@ -197,15 +197,15 @@ runCoop co = evalStateT ([Ev !currentTime $ Ctx co Nothing], empty) runLeftEvent
     evs@(currEv::restEvs) => do
       if !(lift currentTime) >= currEv.time
         then put restEvs *> runEvent currEv
-        else pure () -- TODO to wait for the `currEvTime - !currentTime`; or support and perform permanent tasks
+        else lift $ sleepTill currEv.time -- TODO to support and perform permanent tasks
       runLeftEvents
 
 ------------------------------
 --- Interesting properties ---
 ------------------------------
 
-0 run_unlifts : (Monad m, Timed m) => (x : m ()) -> runCoop (lift x) = x
+0 run_unlifts : (Monad m, CanSleep m) => (x : m ()) -> runCoop (lift x) = x
 
-0 run_seq_dep_lin : (Monad m, Timed m) => (x : m a) -> (y : a -> Coop m ()) -> runCoop (lift x >>= y) = x >>= Coop.runCoop . y
+0 run_seq_dep_lin : (Monad m, CanSleep m) => (x : m a) -> (y : a -> Coop m ()) -> runCoop (lift x >>= y) = x >>= Coop.runCoop . y
 
-0 run_seq_indep_lin : (Monad m, Timed m) => (x, y : Coop m ()) -> runCoop (x >>= const y) = runCoop x >>= const (runCoop y)
+0 run_seq_indep_lin : (Monad m, CanSleep m) => (x, y : Coop m ()) -> runCoop (x >>= const y) = runCoop x >>= const (runCoop y)
