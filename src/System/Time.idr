@@ -2,6 +2,9 @@ module System.Time
 
 import Data.Nat
 
+import System       -- for `sleep` for `IO` implementations
+import System.Clock -- for `clockTime` for `IO` implementations
+
 %default total
 
 ----------------------------------------------------------
@@ -144,3 +147,36 @@ interface Timed m => Monad m => CanSleep m where
 
   sleepFor : FinDuration -> m Unit
   sleepFor d = sleepTill $ !currentTime + d
+
+--------------------------------
+--- Implementations for `IO` ---
+--------------------------------
+
+namespace Timed
+
+  export
+  [HasIO] HasIO io => Timed io where
+    currentTime = liftIO $ (.millis) . fromInteger . millisOfClock <$> clockTime UTC where
+      millisOfClock : Clock _ -> Integer
+      millisOfClock (MkClock secs nanos) = secs * 1000 + nanos `div` 1000000
+
+namespace CanSleep
+
+  export
+  [HasIO] HasIO io => CanSleep io using Timed.HasIO where
+    sleepFor d = do
+      sleep $ cast d.asSeconds
+      let (msComp ** _) = toIntWithPrf d.millisComponent
+      usleep msComp
+      where
+        %inline
+        toIntWithPrf : Nat -> (x : Int ** So (x >= 0))
+        toIntWithPrf k = (cast k ** believe_me {- we are converting from `Nat` -} Oh)
+
+export
+Timed IO where
+  currentTime = currentTime @{HasIO}
+
+export
+CanSleep IO where
+  sleepFor = sleepFor @{HasIO}
