@@ -27,6 +27,13 @@ interface TimeValue a where
   (.asHours)   : a -> UntypedTime
   (.asDays)    : a -> UntypedTime
 
+  -- appropriate components when we represent this time value as `DD HH:MM:SS.ms`
+  (.millisComponent)  : a -> UntypedTime
+  (.secondsComponent) : a -> UntypedTime
+  (.minutesComponent) : a -> UntypedTime
+  (.hoursComponent)   : a -> UntypedTime
+  (.daysComponent)    : a -> UntypedTime
+
   x.seconds = (1000 * x).millis
   x.minutes = (60 * x).seconds
   x.hours   = (60 * x).minutes
@@ -36,6 +43,12 @@ interface TimeValue a where
   x.asMinutes = divNatNZ x.asSeconds 60   SIsNonZero
   x.asHours   = divNatNZ x.asMinutes 60   SIsNonZero
   x.asDays    = divNatNZ x.asHours   24   SIsNonZero
+
+  x.millisComponent  = modNatNZ x.asMillis  1000 SIsNonZero
+  x.secondsComponent = modNatNZ x.asSeconds 60   SIsNonZero
+  x.minutesComponent = modNatNZ x.asMinutes 60   SIsNonZero
+  x.hoursComponent   = modNatNZ x.asHours   24   SIsNonZero
+  x.daysComponent    = x.asDays
 
 ---------------------
 --- Absolute time ---
