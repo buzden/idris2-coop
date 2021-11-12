@@ -1,5 +1,4 @@
-import Control.Monad.Coop
-import Control.Monad.State
+import CommonTestingStuff
 
 -------------------------------
 --- Preparation for testing ---
@@ -15,18 +14,6 @@ append x = modify (++ [x])
 exec : Coop (State $ List String) Unit -> List String
 exec = execState [] . runCoop
 
-(===) : (Eq a, Show a, HasIO io) => a -> a -> io ()
-x === y = if x == y
-            then putStrLn "- [ok]"
-            else putStrLn $ "- [VIOLATION] got " ++ show x ++ " but expected " ++ show y
-
-MonadState st m => MonadState st (Coop m) where
-  get = lift get
-  put = lift . put
-
-Show Time where
-  show t = show t.asMillis
-
 -----------------------
 --- Unit test cases ---
 -----------------------
@@ -40,7 +27,7 @@ main = do
   (exec $ currentTime >>= append . show) === ["0"]
 
   putStrLn "test: return time at the start and then just a string"
-  (exec $ currentTime >>= append . show >>= \() => append "test") === ["0", "test"]
+  (exec $ currentTime >>= append . show >> append "test") === ["0", "test"]
 
   putStrLn "test: consequent appends"
   (exec $ append "test1" *> append "test2") === ["test1", "test2"]

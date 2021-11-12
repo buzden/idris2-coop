@@ -1,15 +1,4 @@
-import Control.Monad.Coop
-
-import System.Clock
-
-millis : HasIO io => io Integer
-millis = cast . (.asMillis) <$> currentTime @{HasIO}
-
-printTime : HasIO io => (offset : Integer) -> String -> io Unit
-printTime offset s = putStrLn $ "[time: " ++ show (!millis - offset) ++ "] " ++ s
-
-forever : Monad m => m a -> m b
-forever x = do ignore x; forever x
+import CommonTestingStuff
 
 export
 main : IO Unit
