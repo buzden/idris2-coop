@@ -19,7 +19,7 @@ delays = [250.millis, 600.millis, 0.seconds, 1.seconds, 4.seconds]
 Show FinDuration where
   show d = show d.asMillis
 
-p : DelayableFor io => HasIO io => Integer -> FinDuration -> io Unit
+p : CanSleep io => HasIO io => Integer -> FinDuration -> io Unit
 p offset d = do
   sleepFor d
   printTime offset "after waiting for \{show d}"

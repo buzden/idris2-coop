@@ -125,9 +125,9 @@ interface Timed m where
   currentTime : m Time
 
 public export
-interface Monad m => DelayableTill m where
+interface Timed m => Monad m => CanSleep m where
   sleepTill : Time -> m Unit
+  sleepTill t = sleepFor $ t - !currentTime
 
-public export
-interface Monad m => DelayableFor m where
   sleepFor : FinDuration -> m Unit
+  sleepFor d = sleepTill $ !currentTime + d

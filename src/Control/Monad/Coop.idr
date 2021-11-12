@@ -81,12 +81,8 @@ par : Applicative m => Coop m Unit -> Coop m Unit -> Coop m Unit
 par = ignore .: zip
 
 export
-Monad m => DelayableTill (Coop m) where
+Timed m => Monad m => CanSleep (Coop m) where
   sleepTill = DelayedTill
-
-export
-(Timed m, Monad m) => DelayableFor (Coop m) where
-  sleepFor t = sleepTill . (+t) =<< currentTime
 
 export
 HasIO (Coop IO) where
