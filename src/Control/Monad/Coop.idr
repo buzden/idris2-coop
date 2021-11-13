@@ -199,13 +199,3 @@ runCoop co = evalStateT ([Ev !currentTime $ Ctx co Nothing], empty) runLeftEvent
         then put restEvs *> runEvent currEv
         else lift $ sleepTill currEv.time -- TODO to support and perform permanent tasks
       runLeftEvents
-
-------------------------------
---- Interesting properties ---
-------------------------------
-
-0 run_unlifts : (Monad m, CanSleep m) => (x : m ()) -> runCoop (lift x) = x
-
-0 run_seq_dep_lin : (Monad m, CanSleep m) => (x : m a) -> (y : a -> Coop m ()) -> runCoop (lift x >>= y) = x >>= Coop.runCoop . y
-
-0 run_seq_indep_lin : (Monad m, CanSleep m) => (x, y : Coop m ()) -> runCoop (x >>= const y) = runCoop x >>= const (runCoop y)
