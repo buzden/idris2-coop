@@ -1,7 +1,10 @@
 module CommonTestingStuff
 
+import Data.SnocList
+
 import public Control.Monad.Coop
 import public Control.Monad.State
+import public Control.Monad.Writer
 
 %default total
 
@@ -44,9 +47,41 @@ export
 Show FinDuration where
   show d = show d.asMillis
 
+--- `Writer`-related stuff ---
+
+export
+tellTimed : Timed m => MonadWriter (SnocList String) m => String -> m Unit
+tellTimed str = tell $ pure "[time: \{show !currentTime}] \{str}"
+
+export
+Timed m => Monad m => Timed (WriterT w m) where
+  currentTime = lift currentTime
+
+export
+CanSleep m => CanSleep (WriterT w m) where
+  sleepFor  = lift . sleepFor
+  sleepTill = lift . sleepTill
+
+export covering
+execW : Monoid w => (forall m. MonadWriter w m => CanSleep m => Coop m Unit) -> w
+execW c = execWriter $ evalStateT 0.seconds $ runCoop c {m=StateT Time _} where
+
+  Monad m => Timed (StateT Time m) where
+    currentTime = get
+
+  Monad m => CanSleep (StateT Time m) where
+    sleepFor d = modify (+d)
+
 --- Liftings for `Coop` ---
 
 export
 MonadState st m => MonadState st (Coop m) where
   get = lift get
   put = lift . put
+
+export
+MonadWriter w m => MonadWriter w (Coop m) where
+  writer = lift . writer
+  tell   = lift . tell
+  listen = (>>= lift . listen . pure)
+  pass   = (>>= lift . pass   . pure)
