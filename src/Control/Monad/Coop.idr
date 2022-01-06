@@ -9,7 +9,7 @@ import Data.SortedMap
 import public Data.Zippable
 
 import Control.Monad.State
-import Control.Monad.State.Pair
+import Control.Monad.State.Tuple
 import Control.Monad.Trans
 
 %default total
