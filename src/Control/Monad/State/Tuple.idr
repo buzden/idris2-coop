@@ -1,4 +1,4 @@
-module Control.Monad.State.Pair
+module Control.Monad.State.Tuple
 
 import public Control.Monad.State
 
