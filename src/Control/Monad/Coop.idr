@@ -25,14 +25,6 @@ data Coop : (m : Type -> Type) -> (a : Type) -> Type where
   Cooperative : Coop m a -> Coop m b -> Coop m (a, b)
   DelayedTill : Time -> Coop m Unit
 
---------------------------------
---- Basic creation functions ---
---------------------------------
-
-export
-atomic : m a -> Coop m a
-atomic = Point
-
 -----------------------
 --- Implementations ---
 -----------------------
@@ -86,11 +78,11 @@ Timed m => Monad m => CanSleep (Coop m) where
 
 export
 HasIO (Coop IO) where
-  liftIO = atomic
+  liftIO = Point
 
 export
 MonadTrans Coop where
-  lift = atomic
+  lift = Point
 
 -------------------
 --- Interpreter ---
