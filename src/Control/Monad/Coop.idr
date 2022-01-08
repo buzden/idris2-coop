@@ -8,9 +8,10 @@ import Data.List.Lazy
 import Data.SortedMap
 import public Data.Zippable
 
+import public Control.Monad.Spawn
 import Control.Monad.State
 import Control.Monad.State.Tuple
-import Control.Monad.Trans
+import public Control.Monad.Trans
 
 %default total
 
@@ -24,6 +25,7 @@ data Coop : (m : Type -> Type) -> (a : Type) -> Type where
   Sequential  : Coop m a -> (a -> Coop m b) -> Coop m b
   Cooperative : Coop m a -> Coop m b -> Coop m (a, b)
   DelayedTill : Time -> Coop m Unit
+  Spawn       : Coop m Unit -> Coop m Unit
 
 -----------------------
 --- Implementations ---
@@ -38,7 +40,8 @@ Applicative m => Functor (Coop m) where
   map f (Point a)           = Point (map f a)
   map f (Sequential a b)    = Sequential a $ \ar => map f $ b ar
   map f x@(Cooperative _ _) = Sequential x $ Point . pure . f
-  map f x@(DelayedTill t)   = Sequential x $ Point . pure . f
+  map f x@(DelayedTill _)   = Sequential x $ Point . pure . f
+  map f x@(Spawn _)         = Sequential x $ Point . pure . f
 
 export
 Applicative m => Applicative (Coop m) where
@@ -72,6 +75,26 @@ export
 export
 Timed m => Applicative m => CanSleep (Coop m) where
   sleepTill = DelayedTill
+
+export
+Applicative m => CanSpawn (Coop m) where
+  -- Runs the given computation in parallel with the monadic continuation.
+  -- In contrast with `zip`, the continuations executes immediately, without waiting to the end of spawned computation.
+  -- Spawned computation will continue to work (if it needs) even if continuation has ended.
+  -- For example, running the following code
+  --
+  -- ```idris
+  -- x : HasIO m => Coop m Nat
+  -- x = do
+  --   spawn $ do
+  --     sleepFor 4.seconds
+  --     putStrLn "spawned"
+  --   putStrLn "main"
+  --   pure 1
+  -- ```
+  --
+  -- will result in returning `1` as the computation result **and** printing "spawned" in four seconds after funning the whole computation `x`.
+  spawn = Spawn
 
 export
 HasIO (Coop IO) where
@@ -151,9 +174,11 @@ runEvent ev@(Ev _ $ Ctx {}) = case ev.ctx.coop of
   Point x                        => lift x >>= tryToAwakenPostponed
   c@(Cooperative _ _)            => modify $ (::) $ {ctx.coop := c >>= pure} ev       -- manage as `Sequential (Cooperative _ _) _`
   c@(DelayedTill _)              => modify $ (::) $ {ctx.coop := c >> pure ()} ev     -- manage as `Sequential (DelayedTill _)   _`
+  c@(Spawn _)                    => modify $ (::) $ {ctx.coop := c >> pure ()} ev     -- manage as `Sequential (Spawn _)         _`
   Sequential (Point x)         f => lift x >>= \r => modify $ (::) $ {ctx.coop := f r} ev
   Sequential (Sequential x g)  f => modify $ (::) $ {ctx.coop := Sequential x $ g >=> f} ev
   Sequential (DelayedTill d)   f => modify $ insertTimed $ {time := d, ctx.coop := f ()} ev
+  Sequential (Spawn s)         f => modify $ \rest : Events m => {ctx.coop := s} ev :: {ctx.coop := f ()} ev :: rest
   Sequential (Cooperative l r) f => do uniqueSync <- newUniqueSync
                                        modify $ insert uniqueSync $ Postpone (\ab => {coop := f ab} ev.ctx) $ Nothing {ty=Unit}
                                        modify $ \rest : Events m =>

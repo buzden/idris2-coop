@@ -1,0 +1,34 @@
+before coop
+[time: 0] start
+[time: 0] spawned, before 1000
+[time: 0]                       trunk, before 350
+[time: 350]                       trunk, before 750
+[time: 1000] spawned, before 2000
+[time: 1100]                       trunk, before 350
+[time: 1450]                       trunk, before 750
+[time: 2200]                       trunk, before 350
+[time: 2550]                       trunk, before 750
+[time: 3000] spawned, before 1000
+[time: 3300]                       trunk, before 350
+[time: 3650]                       trunk, before 750
+[time: 4000] spawned, before 2000
+[time: 4400]                       trunk, before 350
+[time: 4750]                       trunk, before 750
+[time: 5500]                       trunk, before 350
+[time: 5850]                       trunk, before 750
+[time: 6000] spawned, before 1000
+[time: 6600]                       trunk, before 350
+[time: 6950]                       trunk, before 750
+[time: 7000] spawned, before 2000
+[time: 7700]                       trunk, before 350
+[time: 8050]                       trunk, before 750
+[time: 8800]                       trunk, before 350
+[time: 9000] spawned, before 1000
+[time: 9150]                       trunk, before 750
+[time: 9900]                       trunk, before 350
+[time: 10000] spawned, before 2000
+[time: 10250]                       trunk, before 750
+[time: 11000]                       trunk, end
+[time: 12000] spawned, before 1000
+[time: 13000] spawned, before 2000
+[time: 15000] spawned, end

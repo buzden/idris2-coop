@@ -1,7 +1,5 @@
 import CommonTestingStuff
 
-import Data.SnocList
-
 program : MonadWriter (SnocList String) m => CanSleep m => Zippable m => m ()
 program = do
   tellTimed "start"
