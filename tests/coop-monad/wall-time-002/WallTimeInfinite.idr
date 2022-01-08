@@ -1,5 +1,8 @@
 import CommonTestingStuff
 
+par : Applicative m => Coop m Unit -> Coop m Unit -> Coop m Unit
+par = ignore .: zip
+
 export
 main : IO Unit
 main = do putStrLn "before coop"
