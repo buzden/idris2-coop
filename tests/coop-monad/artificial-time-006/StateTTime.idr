@@ -1,7 +1,5 @@
 import CommonTestingStuff
 
-import Data.SnocList
-
 sp : MonadWriter (SnocList String) m => CanSleep m => CanSpawn m => m Nat
 sp = do
   spawn $ do

@@ -1,7 +1,5 @@
 import CommonTestingStuff
 
-import Data.SnocList
-
 -------------------------------
 --- Preparation for testing ---
 -------------------------------

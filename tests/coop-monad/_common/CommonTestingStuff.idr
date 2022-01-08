@@ -1,6 +1,6 @@
 module CommonTestingStuff
 
-import Data.SnocList
+import public Data.SnocList
 
 import public Control.Monad.Coop
 import public Control.Monad.State

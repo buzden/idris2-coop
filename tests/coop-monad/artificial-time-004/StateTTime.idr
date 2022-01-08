@@ -1,7 +1,5 @@
 import CommonTestingStuff
 
-import Data.SnocList
-
 delays : List FinDuration
 delays = [250.millis, 600.millis, 0.seconds, 1.seconds, 4.seconds]
 

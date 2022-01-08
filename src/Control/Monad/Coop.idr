@@ -40,7 +40,7 @@ Applicative m => Functor (Coop m) where
   map f (Point a)           = Point (map f a)
   map f (Sequential a b)    = Sequential a $ \ar => map f $ b ar
   map f x@(Cooperative _ _) = Sequential x $ Point . pure . f
-  map f x@(DelayedTill t)   = Sequential x $ Point . pure . f
+  map f x@(DelayedTill _)   = Sequential x $ Point . pure . f
   map f x@(Spawn _)         = Sequential x $ Point . pure . f
 
 export
