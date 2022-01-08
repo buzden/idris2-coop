@@ -50,7 +50,7 @@ Applicative m => Applicative (Coop m) where
   -- We have a special name instance `Concurrent` below for that case.
 
 export
-Monad m => Monad (Coop m) where
+Applicative m => Monad (Coop m) where
   (>>=) = Sequential
 
 export
@@ -70,7 +70,7 @@ export
   (<*>) = zipWith apply
 
 export
-Timed m => Monad m => CanSleep (Coop m) where
+Timed m => Applicative m => CanSleep (Coop m) where
   sleepTill = DelayedTill
 
 export
