@@ -11,7 +11,7 @@ import public Data.Zippable
 import public Control.Monad.Spawn
 import Control.Monad.State
 import Control.Monad.State.Tuple
-import Control.Monad.Trans
+import public Control.Monad.Trans
 
 %default total
 
