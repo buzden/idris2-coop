@@ -44,9 +44,10 @@ export
 Applicative m => Applicative (Coop m) where
   pure    = Point . pure
   l <*> r = Sequential l (<$> r)
-  -- This could be `(<*>) = Cooperative apply`, but it must be consistent with `(>>=)` definition.
-  -- Consider code `doSmth *> delayedFor 100 *> doMore` comparing to `(doSmth <||> delayedFor 100) *> doMore`.
+  -- This could be `(<*>) = Cooperative <&> uncurry apply`, but it must be consistent with `(>>=)` definition.
+  -- Consider code `doSmth *> sleepFor 100 *> doMore` comparing to `(doSmth `zip` sleepFor 100) *> doMore`.
   -- Having parallel semantics for the `Applicative`'s `<*>`, those two examples above will mean the same, which seems to be unexpected.
+  -- We have a special name instance `Concurrent` below for that case.
 
 export
 Monad m => Monad (Coop m) where
