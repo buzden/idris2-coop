@@ -69,10 +69,6 @@ export
   pure  = Point . pure
   (<*>) = zipWith apply
 
-public export %inline
-par : Applicative m => Coop m Unit -> Coop m Unit -> Coop m Unit
-par = ignore .: zip
-
 export
 Timed m => Monad m => CanSleep (Coop m) where
   sleepTill = DelayedTill
