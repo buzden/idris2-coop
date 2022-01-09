@@ -153,9 +153,9 @@ earliestEvent evs = leftMost evs <&> \(t, currEv ::: restTEvs) => (currEv,) $ ma
 record Postponed (m : Type -> Type) where
   constructor Postpone
   postCtx : (contLTy, contRTy) -> CoopCtx m
-  -- This postponed continuation is waining for two executions.
+  -- This postponed continuation is waiting for two executions.
   -- When one of them is completed, the result should be present in this field.
-  completedHalf : Maybe completedHaftTy
+  completedHalf : Maybe completedHalfTy
 
 Syncs : (Type -> Type) -> Type
 Syncs = SortedMap Sync . Postponed
