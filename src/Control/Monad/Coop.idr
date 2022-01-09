@@ -111,7 +111,7 @@ MonadTrans Coop where
 
 --- Data types describing discrete events ---
 
-Sync : Type
+0 Sync : Type
 Sync = Nat
 
 data LeftOrRight = Left | Right
@@ -131,8 +131,7 @@ record Event (m : Type -> Type) where
 
 --- List of events ---
 
-%inline
-Events : (Type -> Type) -> Type
+0 Events : (Type -> Type) -> Type
 Events = SortedMap Time . List1 . Event
 
 insertTimed : Event m -> Events m -> Events m
@@ -157,7 +156,7 @@ record Postponed (m : Type -> Type) where
   -- When one of them is completed, the result should be present in this field.
   completedHalf : Maybe completedHalfTy
 
-Syncs : (Type -> Type) -> Type
+0 Syncs : (Type -> Type) -> Type
 Syncs = SortedMap Sync . Postponed
 
 newUniqueSync : MonadState (Syncs m) f => f Sync
