@@ -137,12 +137,9 @@ Events = SortedMap Time . List1 . Event
 insertTimed : Event m -> Events m -> Events m
 insertTimed ev evs = insert ev.time (maybe (singleton ev) (cons ev) (lookup ev.time evs)) evs
 
-%inline
-(::) : Event m -> Events m -> Events m
-(::) = insertTimed
-
-Nil : Events m
-Nil = empty
+-- Must be equivalent to `insertTimed ev empty`
+singleEvent : Event m -> Events m
+singleEvent ev = singleton ev.time $ singleton ev
 
 earliestEvent : Events m -> Maybe (Event m, Lazy (Events m))
 earliestEvent evs = leftMost evs <&> \(t, currEv ::: restTEvs) => (currEv,) $ maybe (delete t evs) (\r => insert t r evs) $ fromList restTEvs
@@ -205,7 +202,7 @@ runEvent ev@(Ev _ $ Ctx {}) = case ev.ctx.coop of
 
 export covering
 runCoop : CanSleep m => Monad m => Coop m Unit -> m Unit
-runCoop co = evalStateT ([Ev !currentTime $ Ctx co Nothing], empty) runLeftEvents {stateType=(Events m, Syncs m)} where
+runCoop co = evalStateT (singleEvent $ Ev !currentTime $ Ctx co Nothing, empty) runLeftEvents {stateType=(_, Syncs m)} where
 
   runLeftEvents : MonadTrans t => Monad (t m) => MonadState (Events m) (t m) => MonadState (Syncs m) (t m) => t m Unit
   runLeftEvents =
