@@ -2,10 +2,7 @@ module Control.Monad.Coop
 
 import public System.Time
 
-import Data.Maybe
-import Data.List
 import Data.List1
-import Data.List.Lazy
 import Data.SortedMap
 import public Data.Zippable
 
