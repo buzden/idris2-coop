@@ -2,10 +2,7 @@ module Control.Monad.Coop
 
 import public System.Time
 
-import Data.Maybe
-import Data.List
 import Data.List1
-import Data.List.Lazy
 import Data.SortedMap
 import public Data.Zippable
 
@@ -111,7 +108,7 @@ MonadTrans Coop where
 
 --- Data types describing discrete events ---
 
-Sync : Type
+0 Sync : Type
 Sync = Nat
 
 data LeftOrRight = Left | Right
@@ -131,19 +128,26 @@ record Event (m : Type -> Type) where
 
 --- List of events ---
 
-%inline
-Events : (Type -> Type) -> Type
+0 Events : (Type -> Type) -> Type
 Events = SortedMap Time . List1 . Event
 
 insertTimed : Event m -> Events m -> Events m
 insertTimed ev evs = insert ev.time (maybe (singleton ev) (cons ev) (lookup ev.time evs)) evs
 
-%inline
-(::) : Event m -> Events m -> Events m
-(::) = insertTimed
+-- Must be equivalent to `insertTimed ev empty`
+singleEvent : Event m -> Events m
+singleEvent ev = singleton ev.time $ singleton ev
 
-Nil : Events m
-Nil = empty
+addEvents : MonadState (Events m) n => Event m -> List (Event m -> Event m) -> n Unit
+addEvents ev = modify . foldl (\acc, modF => acc . insertTimed (modF ev)) id
+
+-- Psrticular case for `addEvents ev [modF]`
+addEvent : MonadState (Events m) n => Event m -> (Event m -> Event m) -> n Unit
+addEvent ev modF = modify $ insertTimed $ modF ev
+
+-- Psrticular case for `addEvents ev [modF1, modF2]`
+addEvent2 : MonadState (Events m) n => Event m -> (Event m -> Event m) -> (Event m -> Event m) -> n Unit
+addEvent2 ev modF1 modF2 = modify $ insertTimed (modF1 ev) . insertTimed (modF2 ev)
 
 earliestEvent : Events m -> Maybe (Event m, Lazy (Events m))
 earliestEvent evs = leftMost evs <&> \(t, currEv ::: restTEvs) => (currEv,) $ maybe (delete t evs) (\r => insert t r evs) $ fromList restTEvs
@@ -153,11 +157,11 @@ earliestEvent evs = leftMost evs <&> \(t, currEv ::: restTEvs) => (currEv,) $ ma
 record Postponed (m : Type -> Type) where
   constructor Postpone
   postCtx : (contLTy, contRTy) -> CoopCtx m
-  -- This postponed continuation is waining for two executions.
+  -- This postponed continuation is waiting for two executions.
   -- When one of them is completed, the result should be present in this field.
-  completedHalf : Maybe completedHaftTy
+  completedHalf : Maybe completedHalfTy
 
-Syncs : (Type -> Type) -> Type
+0 Syncs : (Type -> Type) -> Type
 Syncs = SortedMap Sync . Postponed
 
 newUniqueSync : MonadState (Syncs m) f => f Sync
@@ -170,8 +174,6 @@ newUniqueSync = do
 
 --- The run loop ---
 
-%hide Prelude.(::)
-
 %inline
 runEvent : Monad m => MonadTrans t => Monad (t m) =>
            MonadState (Events m) (t m) =>
@@ -179,18 +181,17 @@ runEvent : Monad m => MonadTrans t => Monad (t m) =>
            Event m -> t m Unit
 runEvent ev@(Ev _ $ Ctx {}) = case ev.ctx.coop of
   Point x                        => lift x >>= tryToAwakenPostponed
-  Sequential (Point x)         f => lift x >>= \r => modify $ (::) $ {ctx.coop := f r} ev
-  Sequential (Sequential x g)  f => modify $ (::) $ {ctx.coop := Sequential x $ g >=> f} ev
-  Sequential (DelayedTill d)   f => modify $ insertTimed $ {time := d, ctx.coop := f ()} ev
-  Sequential (Spawn s)         f => modify $ \rest : Events m => {ctx.coop := s} ev :: {ctx.coop := f ()} ev :: rest
+  Sequential (Point x)         f => lift x >>= \r => addEvent ev {ctx.coop := f r}
+  Sequential (Sequential x g)  f => addEvent ev {ctx.coop := Sequential x $ g >=> f}
+  Sequential (DelayedTill d)   f => addEvent ev {time := d, ctx.coop := f ()}
+  Sequential (Spawn s)         f => addEvent2 ev {ctx.coop := s} {ctx.coop := f ()}
   Sequential (Cooperative l r) f => do uniqueSync <- newUniqueSync
                                        modify $ insert uniqueSync $ Postpone (\ab => {coop := f ab} ev.ctx) $ Nothing {ty=Unit}
-                                       modify $ \rest : Events m =>
-                                                  {ctx := Ctx l $ Just (uniqueSync, Left )} ev ::
-                                                  {ctx := Ctx r $ Just (uniqueSync, Right)} ev ::
-                                                  rest
+                                       addEvent2 ev
+                                         {ctx := Ctx l $ Just (uniqueSync, Left )}
+                                         {ctx := Ctx r $ Just (uniqueSync, Right)}
   -- The rest is meant to be non-`Sequential` and non-`Point`
-  c                              => modify $ (::) $ {ctx.coop := c >>= pure} ev       -- manage as `Sequential _ Point`
+  c                              => addEvent ev {ctx.coop := c >>= pure}       -- manage as `Sequential _ Point`
 
   where
     tryToAwakenPostponed : forall a. a -> t m Unit
@@ -203,14 +204,14 @@ runEvent ev@(Ev _ $ Ctx {}) = case ev.ctx.coop of
               let newCtx : CoopCtx m = case iAmLOrR of
                                          Left  => pp.postCtx $ believe_me (myHalf, theirHalf)
                                          Right => pp.postCtx $ believe_me (theirHalf, myHalf)
-              modify $ (::) $ {ctx := newCtx} ev
+              addEvent ev {ctx := newCtx}
               put $ delete sy syncs
             Nothing =>
               put $ insert sy ({completedHalf := Just myHalf} pp) syncs
 
 export covering
 runCoop : CanSleep m => Monad m => Coop m Unit -> m Unit
-runCoop co = evalStateT ([Ev !currentTime $ Ctx co Nothing], empty) runLeftEvents {stateType=(Events m, Syncs m)} where
+runCoop co = evalStateT (singleEvent $ Ev !currentTime $ Ctx co Nothing, empty) runLeftEvents {stateType=(_, Syncs m)} where
 
   runLeftEvents : MonadTrans t => Monad (t m) => MonadState (Events m) (t m) => MonadState (Syncs m) (t m) => t m Unit
   runLeftEvents =
