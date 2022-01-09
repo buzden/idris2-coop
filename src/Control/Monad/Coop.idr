@@ -169,8 +169,6 @@ newUniqueSync = do
 
 --- The run loop ---
 
-%hide Prelude.(::)
-
 %inline
 runEvent : Monad m => MonadTrans t => Monad (t m) =>
            MonadState (Events m) (t m) =>
@@ -178,18 +176,16 @@ runEvent : Monad m => MonadTrans t => Monad (t m) =>
            Event m -> t m Unit
 runEvent ev@(Ev _ $ Ctx {}) = case ev.ctx.coop of
   Point x                        => lift x >>= tryToAwakenPostponed
-  Sequential (Point x)         f => lift x >>= \r => modify $ (::) $ {ctx.coop := f r} ev
-  Sequential (Sequential x g)  f => modify $ (::) $ {ctx.coop := Sequential x $ g >=> f} ev
+  Sequential (Point x)         f => lift x >>= \r => modify $ insertTimed $ {ctx.coop := f r} ev
+  Sequential (Sequential x g)  f => modify $ insertTimed $ {ctx.coop := Sequential x $ g >=> f} ev
   Sequential (DelayedTill d)   f => modify $ insertTimed $ {time := d, ctx.coop := f ()} ev
-  Sequential (Spawn s)         f => modify $ \rest : Events m => {ctx.coop := s} ev :: {ctx.coop := f ()} ev :: rest
+  Sequential (Spawn s)         f => modify $ insertTimed ({ctx.coop := s} ev) . insertTimed ({ctx.coop := f ()} ev)
   Sequential (Cooperative l r) f => do uniqueSync <- newUniqueSync
                                        modify $ insert uniqueSync $ Postpone (\ab => {coop := f ab} ev.ctx) $ Nothing {ty=Unit}
-                                       modify $ \rest : Events m =>
-                                                  {ctx := Ctx l $ Just (uniqueSync, Left )} ev ::
-                                                  {ctx := Ctx r $ Just (uniqueSync, Right)} ev ::
-                                                  rest
+                                       modify $ insertTimed ({ctx := Ctx l $ Just (uniqueSync, Left )} ev)
+                                              . insertTimed ({ctx := Ctx r $ Just (uniqueSync, Right)} ev)
   -- The rest is meant to be non-`Sequential` and non-`Point`
-  c                              => modify $ (::) $ {ctx.coop := c >>= pure} ev       -- manage as `Sequential _ Point`
+  c                              => modify $ insertTimed $ {ctx.coop := c >>= pure} ev       -- manage as `Sequential _ Point`
 
   where
     tryToAwakenPostponed : forall a. a -> t m Unit
@@ -202,7 +198,7 @@ runEvent ev@(Ev _ $ Ctx {}) = case ev.ctx.coop of
               let newCtx : CoopCtx m = case iAmLOrR of
                                          Left  => pp.postCtx $ believe_me (myHalf, theirHalf)
                                          Right => pp.postCtx $ believe_me (theirHalf, myHalf)
-              modify $ (::) $ {ctx := newCtx} ev
+              modify $ insertTimed $ {ctx := newCtx} ev
               put $ delete sy syncs
             Nothing =>
               put $ insert sy ({completedHalf := Just myHalf} pp) syncs
