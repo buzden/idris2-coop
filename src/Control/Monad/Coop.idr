@@ -143,6 +143,10 @@ insertBy lt new orig@(x::xs) = if new `lt` x then new :: orig else x :: insertBy
 insertTimed : Event m -> Events m -> Events m
 insertTimed = insertBy $ (<) `on` time
 
+earliestEvent : Events m -> Maybe (Event m, Lazy (Events m))
+earliestEvent []                = Nothing
+earliestEvent (currEv::restEvs) = Just (currEv, restEvs)
+
 --- Syncs stuff ---
 
 record Postponed (m : Type -> Type) where
@@ -206,9 +210,8 @@ runCoop : CanSleep m => Monad m => Coop m Unit -> m Unit
 runCoop co = evalStateT ([Ev !currentTime $ Ctx co Nothing], empty) runLeftEvents {stateType=(Events m, Syncs m)} where
 
   runLeftEvents : MonadTrans t => Monad (t m) => MonadState (Events m) (t m) => MonadState (Syncs m) (t m) => t m Unit
-  runLeftEvents = case !(get {stateType=Events _}) of
-    [] => pure ()
-    evs@(currEv::restEvs) => do
+  runLeftEvents =
+    whenJust (earliestEvent !get) $ \(currEv, restEvs) => do
       if !(lift currentTime) >= currEv.time
         then put restEvs *> runEvent currEv
         else lift $ sleepTill currEv.time -- TODO to support and perform permanent tasks
