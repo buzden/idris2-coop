@@ -4,6 +4,7 @@ import public System.Time
 
 import Data.Maybe
 import Data.List
+import Data.List1
 import Data.List.Lazy
 import Data.SortedMap
 import public Data.Zippable
@@ -132,16 +133,20 @@ record Event (m : Type -> Type) where
 
 %inline
 Events : (Type -> Type) -> Type
-Events = List . Event
+Events = SortedMap Time . List1 . Event
 
--- insert an element to a sorted list producing a sorted list
-insertBy : (lt : a -> a -> Bool) -> a -> List a -> List a
-insertBy _  new []           = [new]
-insertBy lt new orig@(x::xs) = if new `lt` x then new :: orig else x :: insertBy lt new xs
+insertTimed : Event m -> Events m -> Events m
+insertTimed ev evs = insert ev.time (maybe (singleton ev) (cons ev) (lookup ev.time evs)) evs
 
 %inline
-insertTimed : Event m -> Events m -> Events m
-insertTimed = insertBy $ (<) `on` time
+(::) : Event m -> Events m -> Events m
+(::) = insertTimed
+
+Nil : Events m
+Nil = empty
+
+earliestEvent : Events m -> Maybe (Event m, Lazy (Events m))
+earliestEvent evs = leftMost evs <&> \(t, currEv ::: restTEvs) => (currEv,) $ maybe (delete t evs) (\r => insert t r evs) $ fromList restTEvs
 
 --- Syncs stuff ---
 
@@ -164,6 +169,8 @@ newUniqueSync = do
     Just Z     => maybe Z (S . fst) $ rightMost syncs     -- or maximal plus 1
 
 --- The run loop ---
+
+%hide Prelude.(::)
 
 %inline
 runEvent : Monad m => MonadTrans t => Monad (t m) =>
@@ -206,9 +213,8 @@ runCoop : CanSleep m => Monad m => Coop m Unit -> m Unit
 runCoop co = evalStateT ([Ev !currentTime $ Ctx co Nothing], empty) runLeftEvents {stateType=(Events m, Syncs m)} where
 
   runLeftEvents : MonadTrans t => Monad (t m) => MonadState (Events m) (t m) => MonadState (Syncs m) (t m) => t m Unit
-  runLeftEvents = case !(get {stateType=Events _}) of
-    [] => pure ()
-    evs@(currEv::restEvs) => do
+  runLeftEvents =
+    whenJust (earliestEvent !get) $ \(currEv, restEvs) => do
       if !(lift currentTime) >= currEv.time
         then put restEvs *> runEvent currEv
         else lift $ sleepTill currEv.time -- TODO to support and perform permanent tasks
