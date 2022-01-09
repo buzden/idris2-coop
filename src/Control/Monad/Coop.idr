@@ -172,9 +172,6 @@ runEvent : Monad m => MonadTrans t => Monad (t m) =>
            Event m -> t m Unit
 runEvent ev@(Ev _ $ Ctx {}) = case ev.ctx.coop of
   Point x                        => lift x >>= tryToAwakenPostponed
-  c@(Cooperative _ _)            => modify $ (::) $ {ctx.coop := c >>= pure} ev       -- manage as `Sequential (Cooperative _ _) _`
-  c@(DelayedTill _)              => modify $ (::) $ {ctx.coop := c >> pure ()} ev     -- manage as `Sequential (DelayedTill _)   _`
-  c@(Spawn _)                    => modify $ (::) $ {ctx.coop := c >> pure ()} ev     -- manage as `Sequential (Spawn _)         _`
   Sequential (Point x)         f => lift x >>= \r => modify $ (::) $ {ctx.coop := f r} ev
   Sequential (Sequential x g)  f => modify $ (::) $ {ctx.coop := Sequential x $ g >=> f} ev
   Sequential (DelayedTill d)   f => modify $ insertTimed $ {time := d, ctx.coop := f ()} ev
@@ -185,6 +182,9 @@ runEvent ev@(Ev _ $ Ctx {}) = case ev.ctx.coop of
                                                   {ctx := Ctx l $ Just (uniqueSync, Left )} ev ::
                                                   {ctx := Ctx r $ Just (uniqueSync, Right)} ev ::
                                                   rest
+  -- The rest is meant to be non-`Sequential` and non-`Point`
+  c                              => modify $ (::) $ {ctx.coop := c >>= pure} ev       -- manage as `Sequential _ Point`
+
   where
     tryToAwakenPostponed : forall a. a -> t m Unit
     tryToAwakenPostponed myHalf =
