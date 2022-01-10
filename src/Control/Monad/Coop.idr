@@ -181,7 +181,7 @@ runEvent ev = case ev.coop of
   Sequential (Point x)         f => lift x >>= \r => addEvent ev {coop := f r}
   Sequential (Sequential x g)  f => addEvent ev {coop := Sequential x $ g >=> f}
   Sequential (DelayedTill d)   f => addEvent ev {time := d, coop := f ()}
-  Sequential (Spawn s)         f => addEvent2 ev {coop := s} {coop := f ()}
+  Sequential (Spawn s)         f => addEvent2 ev {coop := s, joinSync := Nothing} {coop := f ()}
   Sequential (Cooperative l r) f => do uniqueSync <- newUniqueSync
                                        modify $ insert uniqueSync $ Postpone f ev.joinSync $ Nothing {ty=Unit}
                                        addEvent2 ev
