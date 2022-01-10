@@ -113,18 +113,14 @@ Sync = Nat
 
 data LeftOrRight = Left | Right
 
-record CoopCtx (m : Type -> Type) where
-  constructor Ctx
+record Event (m : Type -> Type) where
+  constructor Ev
+  time : Time
   coop : Coop m actionRetTy
   -- Two present postponed events with the same sync are meant to be blocking each other.
   -- Postponed event needs to be sheduled only when all events with its sync are over.
   -- `Sync` type is a comparable type and is a workaround of uncomparability of `Coop`.
   joinSync : Maybe (Sync, LeftOrRight)
-
-record Event (m : Type -> Type) where
-  constructor Ev
-  time : Time
-  ctx  : CoopCtx m
 
 --- List of events ---
 
@@ -156,7 +152,8 @@ earliestEvent evs = leftMost evs <&> \(t, currEv ::: restTEvs) => (currEv,) $ ma
 
 record Postponed (m : Type -> Type) where
   constructor Postpone
-  postCtx : (contLTy, contRTy) -> CoopCtx m
+  postCoop : (contLTy, contRTy) -> Coop m contRetTy
+  postJoinSync : Maybe (Sync, LeftOrRight)
   -- This postponed continuation is waiting for two executions.
   -- When one of them is completed, the result should be present in this field.
   completedHalf : Maybe completedHalfTy
@@ -179,39 +176,39 @@ runEvent : Monad m => MonadTrans t => Monad (t m) =>
            MonadState (Events m) (t m) =>
            MonadState (Syncs m) (t m) =>
            Event m -> t m Unit
-runEvent ev@(Ev _ $ Ctx {}) = case ev.ctx.coop of
+runEvent ev = case ev.coop of
   Point x                        => lift x >>= tryToAwakenPostponed
-  Sequential (Point x)         f => lift x >>= \r => addEvent ev {ctx.coop := f r}
-  Sequential (Sequential x g)  f => addEvent ev {ctx.coop := Sequential x $ g >=> f}
-  Sequential (DelayedTill d)   f => addEvent ev {time := d, ctx.coop := f ()}
-  Sequential (Spawn s)         f => addEvent2 ev {ctx.coop := s} {ctx.coop := f ()}
+  Sequential (Point x)         f => lift x >>= \r => addEvent ev {coop := f r}
+  Sequential (Sequential x g)  f => addEvent ev {coop := Sequential x $ g >=> f}
+  Sequential (DelayedTill d)   f => addEvent ev {time := d, coop := f ()}
+  Sequential (Spawn s)         f => addEvent2 ev {coop := s} {coop := f ()}
   Sequential (Cooperative l r) f => do uniqueSync <- newUniqueSync
-                                       modify $ insert uniqueSync $ Postpone (\ab => {coop := f ab} ev.ctx) $ Nothing {ty=Unit}
+                                       modify $ insert uniqueSync $ Postpone f ev.joinSync $ Nothing {ty=Unit}
                                        addEvent2 ev
-                                         {ctx := Ctx l $ Just (uniqueSync, Left )}
-                                         {ctx := Ctx r $ Just (uniqueSync, Right)}
+                                         {coop := l, joinSync := Just (uniqueSync, Left )}
+                                         {coop := r, joinSync := Just (uniqueSync, Right)}
   -- The rest is meant to be non-`Sequential` and non-`Point`
-  c                              => addEvent ev {ctx.coop := c >>= pure}       -- manage as `Sequential _ Point`
+  c                              => addEvent ev {coop := c >>= pure}       -- manage as `Sequential _ Point`
 
   where
     tryToAwakenPostponed : forall a. a -> t m Unit
     tryToAwakenPostponed myHalf =
-      whenJust ev.ctx.joinSync $ \(sy, iAmLOrR) => do
+      whenJust ev.joinSync $ \(sy, iAmLOrR) => do
         syncs <- get
         whenJust (SortedMap.lookup sy syncs) $ \pp =>
           case pp.completedHalf of
             Just theirHalf => do
-              let newCtx : CoopCtx m = case iAmLOrR of
-                                         Left  => pp.postCtx $ believe_me (myHalf, theirHalf)
-                                         Right => pp.postCtx $ believe_me (theirHalf, myHalf)
-              addEvent ev {ctx := newCtx}
+              let awakenCoop = pp.postCoop $ case iAmLOrR of
+                    Left  => believe_me (myHalf, theirHalf)
+                    Right => believe_me (theirHalf, myHalf)
+              addEvent ev {coop := awakenCoop, joinSync := pp.postJoinSync}
               put $ delete sy syncs
             Nothing =>
               put $ insert sy ({completedHalf := Just myHalf} pp) syncs
 
 export covering
 runCoop : CanSleep m => Monad m => Coop m Unit -> m Unit
-runCoop co = evalStateT (singleEvent $ Ev !currentTime $ Ctx co Nothing, empty) runLeftEvents {stateType=(_, Syncs m)} where
+runCoop co = evalStateT (singleEvent $ Ev !currentTime co Nothing, empty) runLeftEvents {stateType=(_, Syncs m)} where
 
   runLeftEvents : MonadTrans t => Monad (t m) => MonadState (Events m) (t m) => MonadState (Syncs m) (t m) => t m Unit
   runLeftEvents =
