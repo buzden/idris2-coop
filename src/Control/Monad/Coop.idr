@@ -201,9 +201,9 @@ runEvent ev@(Ev _ $ Ctx {}) = case ev.ctx.coop of
         whenJust (SortedMap.lookup sy syncs) $ \pp =>
           case pp.completedHalf of
             Just theirHalf => do
-              let newCtx : CoopCtx m = case iAmLOrR of
-                                         Left  => pp.postCtx $ believe_me (myHalf, theirHalf)
-                                         Right => pp.postCtx $ believe_me (theirHalf, myHalf)
+              let newCtx = pp.postCtx $ case iAmLOrR of
+                    Left  => believe_me (myHalf, theirHalf)
+                    Right => believe_me (theirHalf, myHalf)
               addEvent ev {ctx := newCtx}
               put $ delete sy syncs
             Nothing =>
