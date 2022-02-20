@@ -111,6 +111,12 @@ MonadTrans Coop where
 0 Sync : Type
 Sync = Nat
 
+newUniqueSync : SortedMap Sync whatever -> Sync
+newUniqueSync syncs = case fst <$> leftMost syncs of
+  Nothing    => Z
+  Just (S x) => x                                       -- either minimal minus 1
+  Just Z     => maybe Z (S . fst) $ rightMost syncs     -- or maximal plus 1
+
 data LeftOrRight = Left | Right
 
 record Event (m : Type -> Type) where
@@ -161,14 +167,6 @@ record Postponed (m : Type -> Type) where
 0 Syncs : (Type -> Type) -> Type
 Syncs = SortedMap Sync . Postponed
 
-newUniqueSync : MonadState (Syncs m) f => f Sync
-newUniqueSync = do
-  syncs <- get
-  pure $ case fst <$> leftMost syncs of
-    Nothing    => Z
-    Just (S x) => x                                       -- either minimal minus 1
-    Just Z     => maybe Z (S . fst) $ rightMost syncs     -- or maximal plus 1
-
 --- The run loop ---
 
 %inline
@@ -182,7 +180,7 @@ runEvent ev = case ev.coop of
   Sequential (Sequential x g)  f => addEvent ev {coop := Sequential x $ g >=> f}
   Sequential (DelayedTill d)   f => addEvent ev {time := d, coop := f ()}
   Sequential (Spawn s)         f => addEvent2 ev {coop := s, joinSync := Nothing} {coop := f ()}
-  Sequential (Cooperative l r) f => do uniqueSync <- newUniqueSync
+  Sequential (Cooperative l r) f => do uniqueSync <- newUniqueSync <$> get
                                        modify $ insert uniqueSync $ Postpone f ev.joinSync $ Nothing {ty=Unit}
                                        addEvent2 ev
                                          {coop := l, joinSync := Just (uniqueSync, Left )}
