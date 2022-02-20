@@ -1,5 +1,7 @@
 IDRIS2 ?= idris2
 
+RUNTESTS := build/exec/runtests
+
 INTERACTIVE ?= --interactive
 ifeq ($(shell uname), FreeBSD)
 	NPROC = sysctl -n hw.ncpu
@@ -16,16 +18,16 @@ runner:
 	${IDRIS2} --build tests.ipkg
 
 test: runner
-	./build/exec/runtests $(IDRIS2) $(INTERACTIVE) --failure-file failures --threads $(threads) --only "$(only)"
+	$(RUNTESTS) $(IDRIS2) $(INTERACTIVE) --timing --failure-file failures --threads $(threads) --only "$(only)"
 
 retest: runner
-	./build/exec/runtests $(IDRIS2) $(INTERACTIVE) --failure-file failures --threads $(threads) --only-file failures --only "$(only)"
+	$(RUNTESTS) $(IDRIS2) $(INTERACTIVE) --timing --failure-file failures --threads $(threads) --only-file failures --only "$(only)"
 
 clean:
 	${IDRIS2} --clean tests.ipkg
 	$(RM) failures
-	@find . -type d -name build -exec rm -rf '{}' \;
-	@find . -type f -name output -exec rm -f '{}' \;
-	@find . -type f -name '*.ttc' -exec rm -f '{}' \;
-	@find . -type f -name '*.ttm' -exec rm -f '{}' \;
-	@find . -type f -name '*.ibc' -exec rm -f '{}' \;
+	@find . -depth -type d -name build -exec rm -rf '{}' \;
+	@find . -type f -name 'output' -delete
+	@find . -type f -name '*.ttc'  -delete
+	@find . -type f -name '*.ttm'  -delete
+	@find . -type f -name '*.ibc'  -delete
