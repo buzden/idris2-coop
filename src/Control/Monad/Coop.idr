@@ -229,7 +229,10 @@ runCoop co = do
       initJoinSyncs : JoinSyncs m = empty
   evalStateT (initEvents, initJoinSyncs) runLeftEvents where
 
-  runLeftEvents : MonadTrans t => Monad (t m) => MonadState (Events m) (t m) => MonadState (JoinSyncs m) (t m) => t m Unit
+  runLeftEvents : MonadTrans t => Monad (t m) =>
+                  MonadState (Events m) (t m) =>
+                  MonadState (JoinSyncs m) (t m) =>
+                  t m Unit
   runLeftEvents =
     whenJust (earliestEvent !get) $ \(currEv, restEvs) => do
       if !(lift currentTime) >= currEv.time
