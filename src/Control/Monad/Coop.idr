@@ -106,16 +106,31 @@ MonadTrans Coop where
 --- Interpreter ---
 -------------------
 
+--- Stuff for runtime syncronisation between discrete events ---
+
+namespace Sync -- actually, the contents of this namespace are not meant to be visible outside `Coop` module
+
+  export
+  record Sync where
+    constructor Sy
+    unSy : Nat
+
+  export %inline
+  Eq Sync where
+    (==) = (==) `on` unSy
+
+  export %inline
+  Ord Sync where
+    compare = compare `on` unSy
+
+  export
+  newUniqueSync : SortedMap Sync whatever -> Sync
+  newUniqueSync syncs = Sy $ case unSy . fst <$> leftMost syncs of
+    Nothing    => Z
+    Just (S x) => x                                              -- either minimal minus 1
+    Just Z     => maybe Z (S . unSy . fst) $ rightMost syncs     -- or maximal plus 1
+
 --- Data types describing discrete events ---
-
-0 Sync : Type
-Sync = Nat
-
-newUniqueSync : SortedMap Sync whatever -> Sync
-newUniqueSync syncs = case fst <$> leftMost syncs of
-  Nothing    => Z
-  Just (S x) => x                                       -- either minimal minus 1
-  Just Z     => maybe Z (S . fst) $ rightMost syncs     -- or maximal plus 1
 
 data LeftOrRight = Left | Right
 
