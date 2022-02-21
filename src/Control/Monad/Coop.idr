@@ -193,7 +193,7 @@ runEvent : Monad m => MonadTrans t => Monad (t m) =>
            MonadState (JoinSyncs m) (t m) =>
            Event m -> t m Unit
 runEvent ev = case ev.coop of
-  Point x                        => lift x >>= tryToAwakenPostponed
+  Point x                        => lift x >>= awakePostponed
   Sequential (Point x)         f => lift x >>= \r => addEvent ev {coop := f r}
   Sequential (Sequential x g)  f => addEvent ev {coop := Sequential x $ g >=> f}
   Sequential (DelayedTill d)   f => addEvent ev {time := d, coop := f ()}
@@ -207,8 +207,9 @@ runEvent ev = case ev.coop of
   c                              => addEvent ev {coop := c >>= pure}       -- manage as `Sequential _ Point`
 
   where
-    tryToAwakenPostponed : forall a. a -> t m Unit
-    tryToAwakenPostponed myHalf =
+
+    awakePostponed : forall a. a -> t m Unit
+    awakePostponed myHalf =
       whenJust ev.joinSync $ \(sy, iAmLOrR) => do
         syncs <- get
         whenJust (SortedMap.lookup sy syncs) $ \pp =>
