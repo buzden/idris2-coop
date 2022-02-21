@@ -9,5 +9,7 @@ atDir poolName dir = testsInDir dir (not . isPrefixOf "_") poolName [] Nothing
 
 main : IO ()
 main = runner
-  [ !("`Coop` monad" `atDir` "coop-monad")
+  [ !( "Sequential execution"                           `atDir` "coop-monad/seq"      )
+  , !( "Concurrent execution with result merging"       `atDir` "coop-monad/zip"      )
+  , !( "Spawning"                                       `atDir` "coop-monad/spawn"    )
   ]

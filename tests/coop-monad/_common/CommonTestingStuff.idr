@@ -8,15 +8,29 @@ import public Control.Monad.Writer
 
 %default total
 
---- `IO` stuff ---
+--- Testing-purpose instances ---
 
 export
-millis : HasIO io => io Integer
-millis = cast . (.asMillis) <$> currentTime @{HasIO}
+Show Time where
+  show t = show t.asMillis
 
 export
-printTime : HasIO io => (offset : Integer) -> String -> io Unit
-printTime offset s = putStrLn "[time: \{show $ !millis - offset}] \{s}"
+Show FinDuration where
+  show d = show d.asMillis
+
+--- Printing stuff ---
+
+public export
+interface Monad m => PrintString m where
+  printString : String -> m Unit
+
+export
+PrintString IO where
+  printString = putStrLn
+
+export
+printTime : PrintString io => Timed io => (offset : Time) -> String -> io Unit
+printTime offset s = printString "[time: \{show {ty=FinDuration} $ !currentTime - offset}] \{s}"
 
 --- Testing-specific stuff ---
 
@@ -37,21 +51,11 @@ export covering
 forever : Monad m => m a -> m b
 forever x = do ignore x; forever x
 
---- Testing-purpose instances ---
-
-export
-Show Time where
-  show t = show t.asMillis
-
-export
-Show FinDuration where
-  show d = show d.asMillis
-
 --- `Writer`-related stuff ---
 
 export
-tellTimed : Timed m => MonadWriter (SnocList String) m => String -> m Unit
-tellTimed str = tell $ pure "[time: \{show !currentTime}] \{str}"
+Monad m => PrintString (WriterT (SnocList String) m) where
+  printString = tell . pure
 
 export
 Timed m => Monad m => Timed (WriterT w m) where
@@ -63,7 +67,7 @@ CanSleep m => CanSleep (WriterT w m) where
   sleepTill = lift . sleepTill
 
 export covering
-execW : Monoid w => (forall m. MonadWriter w m => CanSleep m => Coop m Unit) -> w
+execW : (forall m. PrintString m => CanSleep m => Coop m Unit) -> SnocList String
 execW c = execWriter $ evalStateT 0.seconds $ runCoop c {m=StateT Time _} where
 
   Monad m => Timed (StateT Time m) where
@@ -71,6 +75,9 @@ execW c = execWriter $ evalStateT 0.seconds $ runCoop c {m=StateT Time _} where
 
   Monad m => CanSleep (StateT Time m) where
     sleepFor d = modify (+d)
+
+  PrintString m => PrintString (StateT s m) where
+    printString = lift . printString
 
 --- Liftings for `Coop` ---
 
@@ -85,3 +92,7 @@ MonadWriter w m => MonadWriter w (Coop m) where
   tell   = lift . tell
   listen = (>>= lift . listen . pure)
   pass   = (>>= lift . pass   . pure)
+
+export
+PrintString m => PrintString (Coop m) where
+  printString = lift . printString
