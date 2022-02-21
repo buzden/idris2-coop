@@ -21,7 +21,7 @@ export
 data Coop : (m : Type -> Type) -> (a : Type) -> Type where
   Point       : m a -> Coop m a
   Sequential  : Coop m a -> (a -> Coop m b) -> Coop m b
-  Cooperative : Coop m a -> Coop m b -> Coop m (a, b)
+  Interleaved : Coop m a -> Coop m b -> Coop m (a, b)
   DelayedTill : Time -> Coop m Unit
   Spawn       : Coop m Unit -> Coop m Unit
 
@@ -37,7 +37,7 @@ export
 Applicative m => Functor (Coop m) where
   map f (Point a)           = Point (map f a)
   map f (Sequential a b)    = Sequential a $ \ar => map f $ b ar
-  map f x@(Cooperative _ _) = Sequential x $ Point . pure . f
+  map f x@(Interleaved _ _) = Sequential x $ Point . pure . f
   map f x@(DelayedTill _)   = Sequential x $ Point . pure . f
   map f x@(Spawn _)         = Sequential x $ Point . pure . f
 
@@ -45,7 +45,7 @@ export
 Applicative m => Applicative (Coop m) where
   pure    = Point . pure
   l <*> r = Sequential l (<$> r)
-  -- This could be `(<*>) = Cooperative <&> uncurry apply`, but it must be consistent with `(>>=)` definition.
+  -- This could be `(<*>) = Interleaved <&> uncurry apply`, but it must be consistent with `(>>=)` definition.
   -- Consider code `doSmth *> sleepFor 100 *> doMore` comparing to `(doSmth `zip` sleepFor 100) *> doMore`.
   -- Having parallel semantics for the `Applicative`'s `<*>`, those two examples above will mean the same, which seems to be unexpected.
   -- We have a special name instance `Concurrent` below for that case.
@@ -56,10 +56,10 @@ Applicative m => Monad (Coop m) where
 
 export
 Applicative m => Zippable (Coop m) where
-  zip = Cooperative
-  zipWith f = map (uncurry f) .: Cooperative
+  zip = Interleaved
+  zipWith f = map (uncurry f) .: Interleaved
 
-  zip3 a b c = a `Cooperative` (b `Cooperative` c)
+  zip3 a b c = a `Interleaved` (b `Interleaved` c)
   zipWith3 f a b c = zip3 a b c <&> \(x, y, z) => f x y z
 
   unzipWith f ab = (fst . f <$> ab, snd . f <$> ab)
@@ -198,7 +198,7 @@ runEvent ev = case ev.coop of
   Sequential (Sequential x g)  f => addEvent ev {coop := Sequential x $ g >=> f}
   Sequential (DelayedTill d)   f => addEvent ev {time := d, coop := f ()}
   Sequential (Spawn s)         f => addEvent2 ev {coop := s, joinSync := Nothing} {coop := f ()}
-  Sequential (Cooperative l r) f => do uniqueSync <- newUniqueSync <$> get
+  Sequential (Interleaved l r) f => do uniqueSync <- newUniqueSync <$> get
                                        modify $ insert uniqueSync $ Postpone f ev.joinSync $ Nothing {ty=Unit}
                                        addEvent2 ev
                                          {coop := l, joinSync := Just (uniqueSync, Left )}
