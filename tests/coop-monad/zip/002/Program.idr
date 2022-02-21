@@ -1,21 +1,23 @@
+module Program
+
 import CommonTestingStuff
 
-par : Applicative m => Coop m Unit -> Coop m Unit -> Coop m Unit
-par = ignore .: zip
+export
+beforeString : String
+beforeString = "before coop"
 
 export
-main : IO Unit
-main = do putStrLn "before coop"
-          runCoop $ do
+program : PrintString m => CanSleep m => Zippable m => m ()
+program = do
   offset <- currentTime
   printTime offset "start"
-  par
-    (forever $ do
+  ignore $ zip
+    (for 5 $ do
       printTime offset "proc 1, before 1000"
       sleepFor 1.seconds
       printTime offset "proc 1, before 2000"
       sleepFor 2.seconds)
-    (forever $ do
+    (for 10 $ do
       printTime offset "                     proc 2, before 350"
       sleepFor 350.millis
       printTime offset "                     proc 2, before 750"
