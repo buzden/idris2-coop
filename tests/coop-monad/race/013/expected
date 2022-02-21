@@ -1,0 +1,82 @@
+before coop
+
+------
+
+[time: 0] start
+[time: 0]                                                                       n77 proc, first
+[time: 0]                                                                       n77 proc, before 1350
+[time: 0]                                                n35 proc, first
+[time: 0]                                                n35 proc, before 700
+[time: 0] s150 proc, first
+[time: 0] s150 proc, before 1000
+[time: 0]                          s55 proc, first
+[time: 0]                          s55 proc, before 350
+[time: 350]                          s55 proc, before 750
+[time: 700]                                                n35 proc, before 700
+[time: 1000] s150 proc, before 2000
+[time: 1100]                          s55 proc, before 350
+[time: 1350]                                                                       n77 proc, before 1350
+[time: 1400]                                                n35 proc, before 700
+[time: 1450]                          s55 proc, before 750
+[time: 2100]                                                n35 proc, before 700
+[time: 2200]                          s55 proc, before 350
+[time: 2550]                          s55 proc, before 750
+[time: 2700]                                                                       n77 proc, before 1350
+[time: 2800]                                                n35 proc, before 700
+[time: 3000] s150 proc, before 1000
+[time: 3300]                          s55 proc, before 350
+[time: 3500]                                                n35 proc, last
+[time: 3500] --- printing sleep, 1.45 sec ---
+[time: 3650]                          s55 proc, before 750
+[time: 4000] s150 proc, before 2000
+[time: 4400]                          s55 proc, before 350
+[time: 4500] 35##
+[time: 4750]                          s55 proc, before 750
+[time: 4950] top: #35#
+[time: 4950] end
+
+------
+
+[time: 0] start
+[time: 0] s150 proc, first
+[time: 0] s150 proc, before 1000
+[time: 0]                          s55 proc, first
+[time: 0]                          s55 proc, before 350
+[time: 0]                                                                       n77 proc, first
+[time: 0]                                                                       n77 proc, before 1350
+[time: 0]                                                n35 proc, first
+[time: 0]                                                n35 proc, before 700
+[time: 350]                          s55 proc, before 750
+[time: 700]                                                n35 proc, before 700
+[time: 1000] s150 proc, before 2000
+[time: 1100]                          s55 proc, before 350
+[time: 1350]                                                                       n77 proc, before 1350
+[time: 1400]                                                n35 proc, before 700
+[time: 1450]                          s55 proc, before 750
+[time: 2100]                                                n35 proc, before 700
+[time: 2200]                          s55 proc, before 350
+[time: 2550]                          s55 proc, before 750
+[time: 2700]                                                                       n77 proc, before 1350
+[time: 2800]                                                n35 proc, before 700
+[time: 3000] s150 proc, before 1000
+[time: 3300]                          s55 proc, before 350
+[time: 3500]                                                n35 proc, last
+[time: 3500]                                                n35 proc, first
+[time: 3500]                                                n35 proc, before 700
+[time: 3650]                          s55 proc, before 750
+[time: 4000] s150 proc, before 2000
+[time: 4050]                                                                       n77 proc, before 1350
+[time: 4200]                                                n35 proc, before 700
+[time: 4400]                          s55 proc, before 350
+[time: 4750]                          s55 proc, before 750
+[time: 4900]                                                n35 proc, before 700
+[time: 5400]                                                                       n77 proc, before 1350
+[time: 5500]                          s55 proc, last
+[time: 5500] --- printing sleep, 1.45 sec ---
+[time: 5600]                                                n35 proc, before 700
+[time: 6300]                                                n35 proc, before 700
+[time: 6500] "short"$$
+[time: 6950] top: 5
+[time: 6950] end
+
+------

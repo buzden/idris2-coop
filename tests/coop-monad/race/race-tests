@@ -1,0 +1,19 @@
+008: `(a <|> b) >> (b <|> a)` when, say, `a` is faster than `b`
+009: `infinite <|> a`
+010: `(zipWith f a b) <|> c`
+011: `zipWith f (a <|> b) (c <|> d)`
+012: `a <|> b <|> c` when `a` is the shortest and when `c` is the shortest
+012: `(a <|> b) <|> c` being equal to `a <|> b <|> c`, i.e. associativity
+013: `((a <|> b) >>= e) <|> (c <|> d)`
+
+when `Alternative` is available:
+`empty <|> a` and `a <|> empty`
+`choice` of some list, maybe choice of choices
+`(b *> empty) <|> a` with effects of `b` which are before the end of `a`
+`(empty *> b) <|> a` without any effects of `b`
+`a *> empty *> b` being eqivalent to `a` by side effects (not by the returned result)
+`zipWith f empty a` is equivalent to `a *> empty`
+`zipWith f (a *> empty) b` is equivalent to `zipWith (,) a b *> empty`
+
+-- finalisation action in the underlying monad?
+-- atomic sequence of actions? or the current `lift` is enough?

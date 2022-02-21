@@ -1,0 +1,40 @@
+before coop
+[time: 0] start
+[time: 0] long proc, first
+[time: 0] long proc, before 1000
+[time: 0]                        short proc, first
+[time: 0]                        short proc, before 350
+[time: 350]                        short proc, before 750
+[time: 1000] long proc, before 2000
+[time: 1100]                        short proc, before 350
+[time: 1450]                        short proc, before 750
+[time: 2200]                        short proc, before 350
+[time: 2550]                        short proc, before 750
+[time: 3000] long proc, before 1000
+[time: 3300]                        short proc, before 350
+[time: 3650]                        short proc, before 750
+[time: 4000] long proc, before 2000
+[time: 4400]                        short proc, before 350
+[time: 4750]                        short proc, before 750
+[time: 5500]                        short proc, last
+[time: 5500] top: short
+[time: 6500] ------
+[time: 6500]                        short proc, first
+[time: 6500]                        short proc, before 350
+[time: 6500] long proc, first
+[time: 6500] long proc, before 1000
+[time: 6850]                        short proc, before 750
+[time: 7500] long proc, before 2000
+[time: 7600]                        short proc, before 350
+[time: 7950]                        short proc, before 750
+[time: 8700]                        short proc, before 350
+[time: 9050]                        short proc, before 750
+[time: 9500] long proc, before 1000
+[time: 9800]                        short proc, before 350
+[time: 10150]                        short proc, before 750
+[time: 10500] long proc, before 2000
+[time: 10900]                        short proc, before 350
+[time: 11250]                        short proc, before 750
+[time: 12000]                        short proc, last
+[time: 12000] top: short
+[time: 12000] end

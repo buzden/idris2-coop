@@ -1,0 +1,33 @@
+before coop
+[time: 0] start
+[time: 0]                        zipped a, first
+[time: 0]                        zipped b, first
+[time: 0]                        zipped b, last
+[time: 0] short proc, first
+[time: 0] short proc, before 350
+[time: 350] short proc, before 750
+[time: 1100] short proc, before 350
+[time: 1450] short proc, before 750
+[time: 2200] short proc, before 350
+[time: 2550] short proc, before 750
+[time: 3300] short proc, before 350
+[time: 3500]                        zipped a, mid
+[time: 3650] short proc, before 750
+[time: 4400] short proc, before 350
+[time: 4750] short proc, before 750
+[time: 5500] short proc, last
+[time: 5500] top: short
+[time: 6500] ------
+[time: 6500]                        zipped a, first
+[time: 6500]                        zipped b, first
+[time: 6500]                        zipped b, last
+[time: 6500] long proc, first
+[time: 6500] long proc, before 1000
+[time: 7500] long proc, before 2000
+[time: 9500] long proc, before 1000
+[time: 10000]                        zipped a, mid
+[time: 10500] long proc, before 2000
+[time: 12500] long proc, before 1000
+[time: 13000]                        zipped a, last
+[time: 13000] top: zipped: 6
+[time: 13000] end
