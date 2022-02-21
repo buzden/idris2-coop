@@ -224,7 +224,10 @@ runEvent ev = case ev.coop of
 
 export covering
 runCoop : CanSleep m => Monad m => Coop m Unit -> m Unit
-runCoop co = evalStateT (singleEvent $ Ev !currentTime co Nothing, empty) runLeftEvents {stateType=(_, JoinSyncs m)} where
+runCoop co = do
+  let initEvents = singleEvent $ Ev !currentTime co Nothing
+      initJoinSyncs : JoinSyncs m = empty
+  evalStateT (initEvents, initJoinSyncs) runLeftEvents where
 
   runLeftEvents : MonadTrans t => Monad (t m) => MonadState (Events m) (t m) => MonadState (JoinSyncs m) (t m) => t m Unit
   runLeftEvents =
