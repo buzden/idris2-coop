@@ -110,21 +110,24 @@ MonadTrans Coop where
 
 namespace Sync -- actually, the contents of this namespace are not meant to be visible outside `Coop` module
 
+  public export
+  data SyncKind = Join
+
   export
-  record Sync where
+  record Sync (0 k : SyncKind) where
     constructor Sy
     unSy : Nat
 
   export %inline
-  Eq Sync where
+  Eq (Sync sk) where
     (==) = (==) `on` unSy
 
   export %inline
-  Ord Sync where
+  Ord (Sync sk) where
     compare = compare `on` unSy
 
   export
-  newUniqueSync : SortedMap Sync whatever -> Sync
+  newUniqueSync : SortedMap (Sync sk) whatever -> Sync sk
   newUniqueSync syncs = Sy $ case unSy . fst <$> leftMost syncs of
     Nothing    => Z
     Just (S x) => x                                              -- either minimal minus 1
@@ -141,7 +144,7 @@ record Event (m : Type -> Type) where
   -- Two present postponed events with the same sync are meant to be blocking each other.
   -- Postponed event needs to be sheduled only when all events with its sync are over.
   -- `Sync` type is a comparable type and is a workaround of uncomparability of `Coop`.
-  joinSync : Maybe (Sync, LeftOrRight)
+  joinSync : Maybe (Sync Join, LeftOrRight)
 
 --- List of events ---
 
@@ -169,25 +172,25 @@ addEvent2 ev modF1 modF2 = modify $ insertTimed (modF1 ev) . insertTimed (modF2 
 earliestEvent : Events m -> Maybe (Event m, Lazy (Events m))
 earliestEvent evs = leftMost evs <&> \(t, currEv ::: restTEvs) => (currEv,) $ maybe (delete t evs) (\r => insert t r evs) $ fromList restTEvs
 
---- Syncs stuff ---
+--- Join synchronisation stuff ---
 
 record Postponed (m : Type -> Type) where
   constructor Postpone
   postCoop : (contLTy, contRTy) -> Coop m contRetTy
-  postJoinSync : Maybe (Sync, LeftOrRight)
+  postJoinSync : Maybe (Sync Join, LeftOrRight)
   -- This postponed continuation is waiting for two executions.
   -- When one of them is completed, the result should be present in this field.
   completedHalf : Maybe completedHalfTy
 
-0 Syncs : (Type -> Type) -> Type
-Syncs = SortedMap Sync . Postponed
+0 JoinSyncs : (Type -> Type) -> Type
+JoinSyncs = SortedMap (Sync Join) . Postponed
 
 --- The run loop ---
 
 %inline
 runEvent : Monad m => MonadTrans t => Monad (t m) =>
            MonadState (Events m) (t m) =>
-           MonadState (Syncs m) (t m) =>
+           MonadState (JoinSyncs m) (t m) =>
            Event m -> t m Unit
 runEvent ev = case ev.coop of
   Point x                        => lift x >>= tryToAwakenPostponed
@@ -221,9 +224,9 @@ runEvent ev = case ev.coop of
 
 export covering
 runCoop : CanSleep m => Monad m => Coop m Unit -> m Unit
-runCoop co = evalStateT (singleEvent $ Ev !currentTime co Nothing, empty) runLeftEvents {stateType=(_, Syncs m)} where
+runCoop co = evalStateT (singleEvent $ Ev !currentTime co Nothing, empty) runLeftEvents {stateType=(_, JoinSyncs m)} where
 
-  runLeftEvents : MonadTrans t => Monad (t m) => MonadState (Events m) (t m) => MonadState (Syncs m) (t m) => t m Unit
+  runLeftEvents : MonadTrans t => Monad (t m) => MonadState (Events m) (t m) => MonadState (JoinSyncs m) (t m) => t m Unit
   runLeftEvents =
     whenJust (earliestEvent !get) $ \(currEv, restEvs) => do
       if !(lift currentTime) >= currEv.time
