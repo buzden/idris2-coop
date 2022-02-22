@@ -6,6 +6,7 @@ import Data.List1
 import Data.SortedMap
 import public Data.Zippable
 
+import Control.Monad.Coop.Sync
 import public Control.Monad.Spawn
 import Control.Monad.State
 import Control.Monad.State.Tuple
@@ -106,34 +107,9 @@ MonadTrans Coop where
 --- Interpreter ---
 -------------------
 
---- Stuff for runtime syncronisation between discrete events ---
-
-namespace Sync -- actually, the contents of this namespace are not meant to be visible outside `Coop` module
-
-  public export
-  data SyncKind = Join
-
-  export
-  record Sync (0 k : SyncKind) where
-    constructor Sy
-    unSy : Nat
-
-  export %inline
-  Eq (Sync sk) where
-    (==) = (==) `on` unSy
-
-  export %inline
-  Ord (Sync sk) where
-    compare = compare `on` unSy
-
-  export
-  newUniqueSync : SortedMap (Sync sk) whatever -> Sync sk
-  newUniqueSync syncs = Sy $ case unSy . fst <$> leftMost syncs of
-    Nothing    => Z
-    Just (S x) => x                                              -- either minimal minus 1
-    Just Z     => maybe Z (S . unSy . fst) $ rightMost syncs     -- or maximal plus 1
-
 --- Data types describing discrete events ---
+
+data SyncKind = Join
 
 data LeftOrRight = Left | Right
 
