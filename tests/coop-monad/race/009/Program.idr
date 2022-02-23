@@ -21,18 +21,18 @@ infinite : CanSleep m => m a
 infinite = forever $ sleepFor 1.millis
 
 export
-program : Timed m => PrintString m => Coop m Unit -- `Coop` because we don't have an interface for race yet
+program : PrintString m => CanSleep m => Zippable m => Alternative m => m Unit
 program = do
   offset <- currentTime
   printTime offset "start"
 
-  res <- long offset `race` infinite
+  res <- long offset <|> infinite
   printTime offset "top: \{res}"
 
   sleepFor 1.seconds
   printTime offset "------"
 
-  res <- infinite `race` long offset
+  res <- infinite <|> long offset
   printTime offset "top: \{res}"
 
   printTime offset "end"

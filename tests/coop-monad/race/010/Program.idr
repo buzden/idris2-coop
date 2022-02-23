@@ -42,18 +42,18 @@ zipped = zipWith (\x, y => "\{x}: \{show y}") a b where
     6 <$ printTime offset "                       zipped b, last"
 
 export
-program : Timed m => PrintString m => Coop m Unit -- `Coop` because we don't have an interface for race yet
+program : PrintString m => CanSleep m => Zippable m => Alternative m => m Unit
 program = do
   offset <- currentTime
   printTime offset "start"
 
-  res <- zipped `race` short
+  res <- zipped <|> short
   printTime offset "top: \{res}"
 
   sleepFor 1.seconds
   printTime offset "------"
 
-  res <- zipped `race` long
+  res <- zipped <|> long
   printTime offset "top: \{res}"
 
   printTime offset "end"

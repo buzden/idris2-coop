@@ -44,12 +44,12 @@ n7700 = do
   333 <$ printTime offset "                                                                      n7700 proc, last"
 
 export
-program : Timed m => PrintString m => Coop m Unit -- `Coop` because we don't have an interface for race yet
+program : PrintString m => CanSleep m => Zippable m => Alternative m => m Unit
 program = do
   offset <- currentTime
   printTime offset "start"
 
-  res <- zipWith (\s, n => s ++ show n) (s15000 `race` s5500) (n3500 `race` n7700)
+  res <- zipWith (\s, n => s ++ show n) (s15000 <|> s5500) (n3500 <|> n7700)
   printTime offset "top: \{res}"
 
   printTime offset "end"

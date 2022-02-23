@@ -27,18 +27,18 @@ short offset = do
   "short" <$ printTime offset "                       short proc, last"
 
 export
-program : Timed m => PrintString m => Coop m Unit -- `Coop` because we don't have an interface for race yet
+program : PrintString m => CanSleep m => Zippable m => Alternative m => m Unit
 program = do
   offset <- currentTime
   printTime offset "start"
 
-  res <- long offset `race` short offset
+  res <- long offset <|> short offset
   printTime offset "top: \{res}"
 
   sleepFor 1.seconds
   printTime offset "------"
 
-  res <- short offset `race` long offset
+  res <- short offset <|> long offset
   printTime offset "top: \{res}"
 
   printTime offset "end"

@@ -60,7 +60,7 @@ prs s = do
   pure $ length s
 
 export
-program : Timed m => PrintString m => Coop m Unit -- `Coop` because we don't have an interface for race yet
+program : PrintString m => CanSleep m => Alternative m => m Unit
 program = do
   printString "\n------\n"
 
@@ -68,7 +68,7 @@ program = do
     offset <- currentTime
     printTime offset "start"
 
-    res <- ((n77 `race` n35) >>= prn) `race` (s150 `race` s55)
+    res <- ((n77 <|> n35) >>= prn) <|> (s150 <|> s55)
     printTime offset "top: \{res}"
 
     printTime offset "end"
@@ -79,7 +79,7 @@ program = do
     offset <- currentTime
     printTime offset "start"
 
-    res <- ((s150 `race` s55) >>= prs) `race` (n77 `race` (n35 *> n35))
+    res <- ((s150 <|> s55) >>= prs) <|> (n77 <|> (n35 *> n35))
     printTime offset "top: \{show res}"
 
     printTime offset "end"
