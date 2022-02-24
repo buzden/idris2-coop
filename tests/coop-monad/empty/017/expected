@@ -1,0 +1,56 @@
+before coop
+
+------
+
+[time: 0] start
+[time: 0] s150 proc, first
+[time: 0] s150 proc, before 1000
+[time: 0]                          s55 proc, first
+[time: 0]                          s55 proc, before 350
+[time: 350]                          s55 proc, before 750
+[time: 1000] s150 proc, before 2000
+[time: 1100]                          s55 proc, before 350
+[time: 1450]                          s55 proc, before 750
+[time: 2200]                          s55 proc, before 350
+[time: 2550]                          s55 proc, before 750
+[time: 3000] s150 proc, before 1000
+[time: 3300]                          s55 proc, before 350
+[time: 3650]                          s55 proc, before 750
+[time: 4000] s150 proc, before 2000
+[time: 4400]                          s55 proc, before 350
+[time: 4750]                          s55 proc, before 750
+[time: 5500]                          s55 proc, last
+[time: 5500] top: short
+[time: 5500] end
+
+------
+
+[time: 0] start
+[time: 0]                          s55 proc, first
+[time: 0]                          s55 proc, before 350
+[time: 0] s150 proc, first
+[time: 0] s150 proc, before 1000
+[time: 350]                          s55 proc, before 750
+[time: 1000] s150 proc, before 2000
+[time: 1100]                          s55 proc, before 350
+[time: 1450]                          s55 proc, before 750
+[time: 2200]                          s55 proc, before 350
+[time: 2550]                          s55 proc, before 750
+[time: 3000] s150 proc, before 1000
+[time: 3300]                          s55 proc, before 350
+[time: 3650]                          s55 proc, before 750
+[time: 4000] s150 proc, before 2000
+[time: 4400]                          s55 proc, before 350
+[time: 4750]                          s55 proc, before 750
+[time: 5500]                          s55 proc, last
+[time: 6000] s150 proc, before 1000
+[time: 7000] s150 proc, before 2000
+[time: 9000] s150 proc, before 1000
+[time: 10000] s150 proc, before 2000
+[time: 12000] s150 proc, before 1000
+[time: 13000] s150 proc, before 2000
+[time: 15000] s150 proc, last
+[time: 15000] top: long
+[time: 15000] end
+
+------
