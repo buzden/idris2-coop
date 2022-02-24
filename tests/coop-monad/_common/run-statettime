@@ -1,5 +1,13 @@
 rm -rf build
 
+TEST_NAME="$(basename "$PWD")"
+TEST_NUM="${TEST_NAME%%-artificial-time}"
+
+# Test dirs must be physically different directories to be able to be run in parallel
+
+rm -f program && ln -s "../$TEST_NUM" program && \
 $1 --exec main --no-color --console-width 0 --no-banner --find-ipkg StateTTime.idr
+
+# We mustn't remove `program` link after because `expected` link may use it
 
 rm -rf build
