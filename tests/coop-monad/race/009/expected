@@ -1,0 +1,30 @@
+before coop
+[time: 0] start
+[time: 0] long proc, first
+[time: 0] long proc, before 1000
+[time: 1000] long proc, before 2000
+[time: 3000] long proc, before 1000
+[time: 4000] long proc, before 2000
+[time: 6000] long proc, before 1000
+[time: 7000] long proc, before 2000
+[time: 9000] long proc, before 1000
+[time: 10000] long proc, before 2000
+[time: 12000] long proc, before 1000
+[time: 13000] long proc, before 2000
+[time: 15000] long proc, last
+[time: 15000] top: long
+[time: 16000] ------
+[time: 16000] long proc, first
+[time: 16000] long proc, before 1000
+[time: 17000] long proc, before 2000
+[time: 19000] long proc, before 1000
+[time: 20000] long proc, before 2000
+[time: 22000] long proc, before 1000
+[time: 23000] long proc, before 2000
+[time: 25000] long proc, before 1000
+[time: 26000] long proc, before 2000
+[time: 28000] long proc, before 1000
+[time: 29000] long proc, before 2000
+[time: 31000] long proc, last
+[time: 31000] top: long
+[time: 31000] end

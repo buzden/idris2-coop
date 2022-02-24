@@ -1,0 +1,39 @@
+before coop
+
+------
+
+[time: 0] start
+[time: 0] s150 proc, first
+[time: 0] s150 proc, before 1000
+[time: 1000] s150 proc, before 2000
+[time: 3000] s150 proc, before 1000
+[time: 4000] s150 proc, before 2000
+[time: 6000] s150 proc, before 1000
+[time: 7000] s150 proc, before 2000
+[time: 9000] s150 proc, before 1000
+[time: 10000] s150 proc, before 2000
+[time: 12000] s150 proc, before 1000
+[time: 13000] s150 proc, before 2000
+[time: 15000] s150 proc, last
+[time: 15000] top: long
+[time: 15000] end
+
+------
+
+[time: 0] start
+[time: 0] s150 proc, first
+[time: 0] s150 proc, before 1000
+[time: 1000] s150 proc, before 2000
+[time: 3000] s150 proc, before 1000
+[time: 4000] s150 proc, before 2000
+[time: 6000] s150 proc, before 1000
+[time: 7000] s150 proc, before 2000
+[time: 9000] s150 proc, before 1000
+[time: 10000] s150 proc, before 2000
+[time: 12000] s150 proc, before 1000
+[time: 13000] s150 proc, before 2000
+[time: 15000] s150 proc, last
+[time: 15000] top: "long"
+[time: 15000] end
+
+------

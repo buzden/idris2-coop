@@ -2,8 +2,10 @@ module Control.Monad.Coop
 
 import public System.Time
 
+import Data.List
 import Data.List1
 import Data.SortedMap
+import Data.SortedSet
 import public Data.Zippable
 
 import Control.Monad.Coop.Sync
@@ -18,13 +20,18 @@ import public Control.Monad.Trans
 --- Data ---
 ------------
 
+data SyncKind = Join | Race
+
 export
 data Coop : (m : Type -> Type) -> (a : Type) -> Type where
   Point       : m a -> Coop m a
   Sequential  : Coop m a -> (a -> Coop m b) -> Coop m b
   Interleaved : Coop m a -> Coop m b -> Coop m (a, b)
+  Racing      : Coop m a -> Coop m a -> Coop m a
+  RaceFence   : (prevRaceSync : Maybe $ Sync Race) -> Coop m Unit
   DelayedTill : Time -> Coop m Unit
   Spawn       : Coop m Unit -> Coop m Unit
+  Empty       : Coop m a
 
 -----------------------
 --- Implementations ---
@@ -39,8 +46,11 @@ Applicative m => Functor (Coop m) where
   map f (Point a)           = Point (map f a)
   map f (Sequential a b)    = Sequential a $ \ar => map f $ b ar
   map f x@(Interleaved _ _) = Sequential x $ Point . pure . f
+  map f x@(Racing _ _)      = Sequential x $ Point . pure . f
+  map f x@(RaceFence _)     = Sequential x $ Point . pure . f
   map f x@(DelayedTill _)   = Sequential x $ Point . pure . f
   map f x@(Spawn _)         = Sequential x $ Point . pure . f
+  map _ Empty               = Empty
 
 export
 Applicative m => Applicative (Coop m) where
@@ -50,6 +60,17 @@ Applicative m => Applicative (Coop m) where
   -- Consider code `doSmth *> sleepFor 100 *> doMore` comparing to `(doSmth `zip` sleepFor 100) *> doMore`.
   -- Having parallel semantics for the `Applicative`'s `<*>`, those two examples above will mean the same, which seems to be unexpected.
   -- We have a special name instance `Concurrent` below for that case.
+
+export
+race : Coop m a -> Coop m a -> Coop m a
+race = Racing
+
+export
+Applicative m => Alternative (Coop m) where
+  -- `empty` computation is like an infinite computation (i.e. no computation goes *after* it and its result cannot be analysed),
+  -- but in contrast, if it is the only what is left during the execution, computation simply finishes.
+  empty = Empty
+  l <|> r = l `Racing` r
 
 export
 Applicative m => Monad (Coop m) where
@@ -109,8 +130,6 @@ MonadTrans Coop where
 
 --- Data types describing discrete events ---
 
-data SyncKind = Join
-
 data LeftOrRight = Left | Right
 
 record Event (m : Type -> Type) where
@@ -121,6 +140,7 @@ record Event (m : Type -> Type) where
   -- Postponed event needs to be sheduled only when all events with its sync are over.
   -- `Sync` type is a comparable type and is a workaround of uncomparability of `Coop`.
   joinSync : Maybe (Sync Join, LeftOrRight)
+  raceSync : Maybe $ Sync Race
 
 --- List of events ---
 
@@ -148,6 +168,9 @@ addEvent2 ev modF1 modF2 = modify $ insertTimed (modF1 ev) . insertTimed (modF2 
 earliestEvent : Events m -> Maybe (Event m, Lazy (Events m))
 earliestEvent evs = leftMost evs <&> \(t, currEv ::: restTEvs) => (currEv,) $ maybe (delete t evs) (\r => insert t r evs) $ fromList restTEvs
 
+filterEvents : (Event m -> Bool) -> Events m -> Events m
+filterEvents f = fromList . mapMaybe (\(t, evs) => (t,) <$> fromList (filter f $ forget evs)) . SortedMap.toList
+
 --- Join synchronisation stuff ---
 
 record Postponed (m : Type -> Type) where
@@ -161,12 +184,27 @@ record Postponed (m : Type -> Type) where
 0 JoinSyncs : (Type -> Type) -> Type
 JoinSyncs = SortedMap (Sync Join) . Postponed
 
+--- Race synchronisation stuff ---
+
+-- Map from one race sync to all child syncs (i.e. those which are cancelled when a series with the parent sync finished)
+0 RaceSyncs : Type
+RaceSyncs = SortedMap (Sync Race) $ List $ Sync Race
+
+transitiveLookup : Foldable f => Ord a => SortedMap a (f a) -> a -> SortedSet a
+transitiveLookup mp x = let x1 = singleton x in go x1 x1 where
+  go : (curr : SortedSet a) -> (new : SortedSet a) -> SortedSet a
+  go curr new = if null new then curr else do
+    let allNexts = fromList $ SortedSet.toList new >>= maybe [] toList . flip SortedMap.lookup mp
+    let nextNew = allNexts `difference` curr
+    assert_total $ go (curr `union` nextNew) nextNew -- first argument is growing and has maximum bound (all `a` in the `mp`)
+
 --- The run loop ---
 
 %inline
 runEvent : Monad m => MonadTrans t => Monad (t m) =>
            MonadState (Events m) (t m) =>
            MonadState (JoinSyncs m) (t m) =>
+           MonadState RaceSyncs (t m) =>
            Event m -> t m Unit
 runEvent ev = case ev.coop of
   Point x          => lift x >>= awakePostponed
@@ -180,6 +218,16 @@ runEvent ev = case ev.coop of
                           addEvent2 ev
                             {coop := l, joinSync := Just (uniqueSync, Left )}
                             {coop := r, joinSync := Just (uniqueSync, Right)}
+    RaceFence prevS => finishRaces *> addEvent ev {coop := f (), raceSync := prevS}
+    Racing Empty r  => addEvent ev {coop := r >>= f}
+    Racing l Empty  => addEvent ev {coop := l >>= f}
+    Racing l r      => do uniqueSync <- newUniqueSync <$> get
+                          modify $ insert uniqueSync [] -- to prevent generation of the same sync
+                          whenJust ev.raceSync $ \parent => modify $ merge $ singleton parent [uniqueSync]
+                          addEvent2 ev
+                            {coop := l >>= (RaceFence ev.raceSync *>) . f, raceSync := Just uniqueSync}
+                            {coop := r >>= (RaceFence ev.raceSync *>) . f, raceSync := Just uniqueSync}
+    Empty           => pure ()
   nonSeqNonPoint   => addEvent ev {coop := nonSeqNonPoint >>= pure}       -- manage as `Sequential _ Point`
 
   where
@@ -199,16 +247,25 @@ runEvent ev = case ev.coop of
             Nothing =>
               put $ insert sy ({completedHalf := Just myHalf} pp) syncs
 
+    finishRaces : t m Unit
+    finishRaces = whenJust ev.raceSync $ \currRaceSync => do
+      raceSyncs <- get
+      let syncsToRemove = transitiveLookup raceSyncs currRaceSync
+      modify $ filterEvents $ maybe True (not . flip contains syncsToRemove) . raceSync
+      put $ foldl (flip SortedMap.delete) raceSyncs syncsToRemove
+
 export covering
 runCoop : CanSleep m => Monad m => Coop m Unit -> m Unit
 runCoop co = do
-  let initEvents = singleEvent $ Ev !currentTime co Nothing
+  let initEvents = singleEvent $ Ev !currentTime co Nothing Nothing
       initJoinSyncs : JoinSyncs m = empty
-  evalStateT (initEvents, initJoinSyncs) runLeftEvents where
+      initRaceSyncs : RaceSyncs = empty
+  evalStateT (initEvents, initJoinSyncs, initRaceSyncs) runLeftEvents where
 
   runLeftEvents : MonadTrans t => Monad (t m) =>
                   MonadState (Events m) (t m) =>
                   MonadState (JoinSyncs m) (t m) =>
+                  MonadState RaceSyncs (t m) =>
                   t m Unit
   runLeftEvents =
     whenJust (earliestEvent !get) $ \(currEv, restEvs) => do

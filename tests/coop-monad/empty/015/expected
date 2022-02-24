@@ -1,0 +1,27 @@
+before coop
+[time: 0] start
+[time: 0] s150 proc, first
+[time: 0] s150 proc, before 1000
+[time: 0]                          s55 proc, first
+[time: 0]                          s55 proc, before 350
+[time: 0]                                                s35 proc, first
+[time: 0]                                                s35 proc, before 700
+[time: 0]                                                                       s77 proc, first
+[time: 0]                                                                       s77 proc, before 1350
+[time: 350]                          s55 proc, before 750
+[time: 700]                                                s35 proc, before 700
+[time: 1000] s150 proc, before 2000
+[time: 1100]                          s55 proc, before 350
+[time: 1350]                                                                       s77 proc, before 1350
+[time: 1400]                                                s35 proc, before 700
+[time: 1450]                          s55 proc, before 750
+[time: 2100]                                                s35 proc, before 700
+[time: 2200]                          s55 proc, before 350
+[time: 2550]                          s55 proc, before 750
+[time: 2700]                                                                       s77 proc, before 1350
+[time: 2800]                                                s35 proc, before 700
+[time: 3000] s150 proc, before 1000
+[time: 3300]                          s55 proc, before 350
+[time: 3500]                                                s35 proc, last
+[time: 3500] top: short
+[time: 3500] end

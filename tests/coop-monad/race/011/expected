@@ -1,0 +1,32 @@
+before coop
+[time: 0] start
+[time: 0] s15000 proc, first
+[time: 0] s15000 proc, before 1000
+[time: 0]                          s5500 proc, first
+[time: 0]                          s5500 proc, before 350
+[time: 0]                                                n3500 proc, first
+[time: 0]                                                n3500 proc, before 700
+[time: 0]                                                                       n7700 proc, first
+[time: 0]                                                                       n7700 proc, before 1350
+[time: 350]                          s5500 proc, before 750
+[time: 700]                                                n3500 proc, before 700
+[time: 1000] s15000 proc, before 2000
+[time: 1100]                          s5500 proc, before 350
+[time: 1350]                                                                       n7700 proc, before 1350
+[time: 1400]                                                n3500 proc, before 700
+[time: 1450]                          s5500 proc, before 750
+[time: 2100]                                                n3500 proc, before 700
+[time: 2200]                          s5500 proc, before 350
+[time: 2550]                          s5500 proc, before 750
+[time: 2700]                                                                       n7700 proc, before 1350
+[time: 2800]                                                n3500 proc, before 700
+[time: 3000] s15000 proc, before 1000
+[time: 3300]                          s5500 proc, before 350
+[time: 3500]                                                n3500 proc, last
+[time: 3650]                          s5500 proc, before 750
+[time: 4000] s15000 proc, before 2000
+[time: 4400]                          s5500 proc, before 350
+[time: 4750]                          s5500 proc, before 750
+[time: 5500]                          s5500 proc, last
+[time: 5500] top: short700
+[time: 5500] end
