@@ -32,3 +32,4 @@ before coop
 [time: 12000] spawned, before 1000
 [time: 13000] spawned, before 2000
 [time: 15000] spawned, end
+after coop

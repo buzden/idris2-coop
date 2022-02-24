@@ -147,6 +147,18 @@ record Event (m : Type -> Type) where
 0 Events : (Type -> Type) -> Type
 Events = SortedMap Time . List1 . Event
 
+-- NOTE: `Events` use `List1` as a value type.
+-- Together with usage of `cons` in `insertTimed`, this it is effectively a stack.
+-- This leads to:
+-- 1) alternating orders when some events happen at the same time moment and have the same delay;
+-- 2) sequence of actions that do not have delays between them do not interleave;
+--    i.e., if two actions `a >> b` and `c >> d` are scheduled at the same time and `a` and `c` do not have delays,
+--    then possible orders are [`a`, `b`, `c`, `d`] or [`c`, `d`, `a`, `b`];
+--    if queue was used, then possible orders whould be [`a`, `c`, `b`, `d`] and [`c`, `a`, `d`, `b`];
+--    this influences in race semantics in the case when two racing computations have events scheduled to the same time
+--    and one of them finishes: when stack, then after execution of finishing action no events are possible by other racing computations;
+--    when queue, all events at the finishing moment of time at least start performing and only after race fence happens.
+
 insertTimed : Event m -> Events m -> Events m
 insertTimed ev evs = insert ev.time (maybe (singleton ev) (cons ev) (lookup ev.time evs)) evs
 

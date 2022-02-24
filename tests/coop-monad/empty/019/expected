@@ -12,3 +12,4 @@ before coop
 [time: 4400]                          s55 proc, before 350
 [time: 4750]                          s55 proc, before 750
 [time: 5500]                          s55 proc, last
+after coop
