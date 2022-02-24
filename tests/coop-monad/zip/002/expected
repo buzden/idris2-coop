@@ -31,3 +31,4 @@ before coop
 [time: 12000] proc 1, before 1000
 [time: 13000] proc 1, before 2000
 [time: 15000] end
+after coop

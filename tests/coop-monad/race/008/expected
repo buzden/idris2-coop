@@ -38,3 +38,4 @@ before coop
 [time: 12000]                        short proc, last
 [time: 12000] top: short
 [time: 12000] end
+after coop

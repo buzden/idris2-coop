@@ -13,3 +13,4 @@ before coop, delays: [250, 600, 0, 1000, 4000]
 [time: 1000] after waiting for 1000
 [time: 4000] after waiting for 4000
 [time: 4000] ==== end
+after coop

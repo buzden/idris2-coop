@@ -6,3 +6,4 @@ main : IO Unit
 main = do
   putStrLn beforeString
   runCoop program
+  putStrLn "after coop"

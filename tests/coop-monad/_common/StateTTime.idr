@@ -6,3 +6,4 @@ main : HasIO io => io ()
 main = do
   putStrLn beforeString
   traverse_ putStrLn $ execW program
+  putStrLn "after coop"

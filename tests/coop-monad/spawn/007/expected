@@ -35,3 +35,4 @@ before coop
 [time: 13000] proc 1, before 2000
 [time: 15000] end, l: 4, r: "right process"
 [time: 15100]                                           spawned 2, after 15s
+after coop
