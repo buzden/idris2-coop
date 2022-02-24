@@ -3,14 +3,14 @@ before coop
 ------
 
 [time: 0] start
-[time: 0]                                                                       n77 proc, first
-[time: 0]                                                                       n77 proc, before 1350
-[time: 0]                                                n35 proc, first
-[time: 0]                                                n35 proc, before 700
-[time: 0] s150 proc, first
-[time: 0] s150 proc, before 1000
 [time: 0]                          s55 proc, first
+[time: 0] s150 proc, first
+[time: 0]                                                n35 proc, first
+[time: 0]                                                                       n77 proc, first
 [time: 0]                          s55 proc, before 350
+[time: 0] s150 proc, before 1000
+[time: 0]                                                n35 proc, before 700
+[time: 0]                                                                       n77 proc, before 1350
 [time: 350]                          s55 proc, before 750
 [time: 700]                                                n35 proc, before 700
 [time: 1000] s150 proc, before 2000
@@ -38,14 +38,14 @@ before coop
 ------
 
 [time: 0] start
-[time: 0] s150 proc, first
-[time: 0] s150 proc, before 1000
-[time: 0]                          s55 proc, first
-[time: 0]                          s55 proc, before 350
 [time: 0]                                                                       n77 proc, first
-[time: 0]                                                                       n77 proc, before 1350
 [time: 0]                                                n35 proc, first
+[time: 0]                          s55 proc, first
+[time: 0] s150 proc, first
+[time: 0]                                                                       n77 proc, before 1350
 [time: 0]                                                n35 proc, before 700
+[time: 0]                          s55 proc, before 350
+[time: 0] s150 proc, before 1000
 [time: 350]                          s55 proc, before 750
 [time: 700]                                                n35 proc, before 700
 [time: 1000] s150 proc, before 2000

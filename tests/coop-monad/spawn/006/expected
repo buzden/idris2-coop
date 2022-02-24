@@ -1,7 +1,7 @@
 before coop
 [time: 0] start
-[time: 0] spawned, before 1000
 [time: 0]                       trunk, returned when spawning: 127
+[time: 0] spawned, before 1000
 [time: 0]                       trunk, before 350
 [time: 350]                       trunk, before 750
 [time: 1000] spawned, before 2000
