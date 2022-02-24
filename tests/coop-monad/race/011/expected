@@ -1,13 +1,13 @@
 before coop
 [time: 0] start
-[time: 0] s15000 proc, first
-[time: 0] s15000 proc, before 1000
-[time: 0]                          s5500 proc, first
-[time: 0]                          s5500 proc, before 350
-[time: 0]                                                n3500 proc, first
-[time: 0]                                                n3500 proc, before 700
 [time: 0]                                                                       n7700 proc, first
+[time: 0]                                                n3500 proc, first
+[time: 0]                          s5500 proc, first
+[time: 0] s15000 proc, first
 [time: 0]                                                                       n7700 proc, before 1350
+[time: 0]                                                n3500 proc, before 700
+[time: 0]                          s5500 proc, before 350
+[time: 0] s15000 proc, before 1000
 [time: 350]                          s5500 proc, before 750
 [time: 700]                                                n3500 proc, before 700
 [time: 1000] s15000 proc, before 2000

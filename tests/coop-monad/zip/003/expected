@@ -1,7 +1,7 @@
 before coop
 [time: 0] start
-[time: 0] proc 1, before 1000, 1
 [time: 0]                                 proc 2, before 350, 10
+[time: 0] proc 1, before 1000, 1
 [time: 350]                                 proc 2, before 750, 10
 [time: 1000] proc 1, before 2000, 1
 [time: 1100]                                 proc 2, before 350, 20
