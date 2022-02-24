@@ -3,7 +3,7 @@ module Control.Monad.Coop
 import public System.Time
 
 import Data.List
-import Data.List1
+import Data.Queue1
 import Data.SortedMap
 import Data.SortedSet
 import public Data.Zippable
@@ -145,22 +145,10 @@ record Event (m : Type -> Type) where
 --- List of events ---
 
 0 Events : (Type -> Type) -> Type
-Events = SortedMap Time . List1 . Event
-
--- NOTE: `Events` use `List1` as a value type.
--- Together with usage of `cons` in `insertTimed`, this it is effectively a stack.
--- This leads to:
--- 1) alternating orders when some events happen at the same time moment and have the same delay;
--- 2) sequence of actions that do not have delays between them do not interleave;
---    i.e., if two actions `a >> b` and `c >> d` are scheduled at the same time and `a` and `c` do not have delays,
---    then possible orders are [`a`, `b`, `c`, `d`] or [`c`, `d`, `a`, `b`];
---    if queue was used, then possible orders whould be [`a`, `c`, `b`, `d`] and [`c`, `a`, `d`, `b`];
---    this influences in race semantics in the case when two racing computations have events scheduled to the same time
---    and one of them finishes: when stack, then after execution of finishing action no events are possible by other racing computations;
---    when queue, all events at the finishing moment of time at least start performing and only after race fence happens.
+Events = SortedMap Time . Queue1 . Event
 
 insertTimed : Event m -> Events m -> Events m
-insertTimed ev evs = insert ev.time (maybe (singleton ev) (cons ev) (lookup ev.time evs)) evs
+insertTimed ev evs = insert ev.time (maybe (singleton ev) (add ev) (lookup ev.time evs)) evs
 
 -- Must be equivalent to `insertTimed ev empty`
 singleEvent : Event m -> Events m
@@ -178,10 +166,12 @@ addEvent2 : MonadState (Events m) n => Event m -> (Event m -> Event m) -> (Event
 addEvent2 ev modF1 modF2 = modify $ insertTimed (modF1 ev) . insertTimed (modF2 ev)
 
 earliestEvent : Events m -> Maybe (Event m, Lazy (Events m))
-earliestEvent evs = leftMost evs <&> \(t, currEv ::: restTEvs) => (currEv,) $ maybe (delete t evs) (\r => insert t r evs) $ fromList restTEvs
+earliestEvent evs = leftMost evs <&> \(t, tEvs) =>
+  let (currEv, restTEvs) = remove tEvs in
+  (currEv,) $ maybe (delete t evs) (\r => insert t r evs) restTEvs
 
 filterEvents : (Event m -> Bool) -> Events m -> Events m
-filterEvents f = fromList . mapMaybe (\(t, evs) => (t,) <$> fromList (filter f $ forget evs)) . SortedMap.toList
+filterEvents f = fromList . mapMaybe (\(t, evs) => (t,) <$> filter f evs) . SortedMap.toList
 
 --- Join synchronisation stuff ---
 
