@@ -6,6 +6,7 @@ import Data.List1
 import Data.SortedMap
 import public Data.Zippable
 
+import Control.Monad.Coop.Sync
 import public Control.Monad.Spawn
 import Control.Monad.State
 import Control.Monad.State.Tuple
@@ -21,7 +22,7 @@ export
 data Coop : (m : Type -> Type) -> (a : Type) -> Type where
   Point       : m a -> Coop m a
   Sequential  : Coop m a -> (a -> Coop m b) -> Coop m b
-  Cooperative : Coop m a -> Coop m b -> Coop m (a, b)
+  Interleaved : Coop m a -> Coop m b -> Coop m (a, b)
   DelayedTill : Time -> Coop m Unit
   Spawn       : Coop m Unit -> Coop m Unit
 
@@ -37,7 +38,7 @@ export
 Applicative m => Functor (Coop m) where
   map f (Point a)           = Point (map f a)
   map f (Sequential a b)    = Sequential a $ \ar => map f $ b ar
-  map f x@(Cooperative _ _) = Sequential x $ Point . pure . f
+  map f x@(Interleaved _ _) = Sequential x $ Point . pure . f
   map f x@(DelayedTill _)   = Sequential x $ Point . pure . f
   map f x@(Spawn _)         = Sequential x $ Point . pure . f
 
@@ -45,7 +46,7 @@ export
 Applicative m => Applicative (Coop m) where
   pure    = Point . pure
   l <*> r = Sequential l (<$> r)
-  -- This could be `(<*>) = Cooperative <&> uncurry apply`, but it must be consistent with `(>>=)` definition.
+  -- This could be `(<*>) = Interleaved <&> uncurry apply`, but it must be consistent with `(>>=)` definition.
   -- Consider code `doSmth *> sleepFor 100 *> doMore` comparing to `(doSmth `zip` sleepFor 100) *> doMore`.
   -- Having parallel semantics for the `Applicative`'s `<*>`, those two examples above will mean the same, which seems to be unexpected.
   -- We have a special name instance `Concurrent` below for that case.
@@ -56,10 +57,10 @@ Applicative m => Monad (Coop m) where
 
 export
 Applicative m => Zippable (Coop m) where
-  zip = Cooperative
-  zipWith f = map (uncurry f) .: Cooperative
+  zip = Interleaved
+  zipWith f = map (uncurry f) .: Interleaved
 
-  zip3 a b c = a `Cooperative` (b `Cooperative` c)
+  zip3 a b c = a `Interleaved` (b `Interleaved` c)
   zipWith3 f a b c = zip3 a b c <&> \(x, y, z) => f x y z
 
   unzipWith f ab = (fst . f <$> ab, snd . f <$> ab)
@@ -108,8 +109,7 @@ MonadTrans Coop where
 
 --- Data types describing discrete events ---
 
-0 Sync : Type
-Sync = Nat
+data SyncKind = Join
 
 data LeftOrRight = Left | Right
 
@@ -120,7 +120,7 @@ record Event (m : Type -> Type) where
   -- Two present postponed events with the same sync are meant to be blocking each other.
   -- Postponed event needs to be sheduled only when all events with its sync are over.
   -- `Sync` type is a comparable type and is a workaround of uncomparability of `Coop`.
-  joinSync : Maybe (Sync, LeftOrRight)
+  joinSync : Maybe (Sync Join, LeftOrRight)
 
 --- List of events ---
 
@@ -148,51 +148,44 @@ addEvent2 ev modF1 modF2 = modify $ insertTimed (modF1 ev) . insertTimed (modF2 
 earliestEvent : Events m -> Maybe (Event m, Lazy (Events m))
 earliestEvent evs = leftMost evs <&> \(t, currEv ::: restTEvs) => (currEv,) $ maybe (delete t evs) (\r => insert t r evs) $ fromList restTEvs
 
---- Syncs stuff ---
+--- Join synchronisation stuff ---
 
 record Postponed (m : Type -> Type) where
   constructor Postpone
   postCoop : (contLTy, contRTy) -> Coop m contRetTy
-  postJoinSync : Maybe (Sync, LeftOrRight)
+  postJoinSync : Maybe (Sync Join, LeftOrRight)
   -- This postponed continuation is waiting for two executions.
   -- When one of them is completed, the result should be present in this field.
   completedHalf : Maybe completedHalfTy
 
-0 Syncs : (Type -> Type) -> Type
-Syncs = SortedMap Sync . Postponed
-
-newUniqueSync : MonadState (Syncs m) f => f Sync
-newUniqueSync = do
-  syncs <- get
-  pure $ case fst <$> leftMost syncs of
-    Nothing    => Z
-    Just (S x) => x                                       -- either minimal minus 1
-    Just Z     => maybe Z (S . fst) $ rightMost syncs     -- or maximal plus 1
+0 JoinSyncs : (Type -> Type) -> Type
+JoinSyncs = SortedMap (Sync Join) . Postponed
 
 --- The run loop ---
 
 %inline
 runEvent : Monad m => MonadTrans t => Monad (t m) =>
            MonadState (Events m) (t m) =>
-           MonadState (Syncs m) (t m) =>
+           MonadState (JoinSyncs m) (t m) =>
            Event m -> t m Unit
 runEvent ev = case ev.coop of
-  Point x                        => lift x >>= tryToAwakenPostponed
-  Sequential (Point x)         f => lift x >>= \r => addEvent ev {coop := f r}
-  Sequential (Sequential x g)  f => addEvent ev {coop := Sequential x $ g >=> f}
-  Sequential (DelayedTill d)   f => addEvent ev {time := d, coop := f ()}
-  Sequential (Spawn s)         f => addEvent2 ev {coop := s, joinSync := Nothing} {coop := f ()}
-  Sequential (Cooperative l r) f => do uniqueSync <- newUniqueSync
-                                       modify $ insert uniqueSync $ Postpone f ev.joinSync $ Nothing {ty=Unit}
-                                       addEvent2 ev
-                                         {coop := l, joinSync := Just (uniqueSync, Left )}
-                                         {coop := r, joinSync := Just (uniqueSync, Right)}
-  -- The rest is meant to be non-`Sequential` and non-`Point`
-  c                              => addEvent ev {coop := c >>= pure}       -- manage as `Sequential _ Point`
+  Point x          => lift x >>= awakePostponed
+  Sequential lhs f => case lhs of
+    Point x         => lift x >>= \r => addEvent ev {coop := f r}
+    Sequential x g  => addEvent ev {coop := Sequential x $ g >=> f}
+    DelayedTill d   => addEvent ev {time := d, coop := f ()}
+    Spawn s         => addEvent2 ev {coop := s, joinSync := Nothing} {coop := f ()}
+    Interleaved l r => do uniqueSync <- newUniqueSync <$> get
+                          modify $ insert uniqueSync $ Postpone f ev.joinSync $ Nothing {ty=Unit}
+                          addEvent2 ev
+                            {coop := l, joinSync := Just (uniqueSync, Left )}
+                            {coop := r, joinSync := Just (uniqueSync, Right)}
+  nonSeqNonPoint   => addEvent ev {coop := nonSeqNonPoint >>= pure}       -- manage as `Sequential _ Point`
 
   where
-    tryToAwakenPostponed : forall a. a -> t m Unit
-    tryToAwakenPostponed myHalf =
+
+    awakePostponed : forall a. a -> t m Unit
+    awakePostponed myHalf =
       whenJust ev.joinSync $ \(sy, iAmLOrR) => do
         syncs <- get
         whenJust (SortedMap.lookup sy syncs) $ \pp =>
@@ -208,9 +201,15 @@ runEvent ev = case ev.coop of
 
 export covering
 runCoop : CanSleep m => Monad m => Coop m Unit -> m Unit
-runCoop co = evalStateT (singleEvent $ Ev !currentTime co Nothing, empty) runLeftEvents {stateType=(_, Syncs m)} where
+runCoop co = do
+  let initEvents = singleEvent $ Ev !currentTime co Nothing
+      initJoinSyncs : JoinSyncs m = empty
+  evalStateT (initEvents, initJoinSyncs) runLeftEvents where
 
-  runLeftEvents : MonadTrans t => Monad (t m) => MonadState (Events m) (t m) => MonadState (Syncs m) (t m) => t m Unit
+  runLeftEvents : MonadTrans t => Monad (t m) =>
+                  MonadState (Events m) (t m) =>
+                  MonadState (JoinSyncs m) (t m) =>
+                  t m Unit
   runLeftEvents =
     whenJust (earliestEvent !get) $ \(currEv, restEvs) => do
       if !(lift currentTime) >= currEv.time
