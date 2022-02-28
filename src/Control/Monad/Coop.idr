@@ -8,6 +8,8 @@ import Data.SortedMap
 import Data.SortedSet
 import public Data.Zippable
 
+import public Control.Applicative.Concurrent
+
 import Control.Monad.Coop.Sync
 import public Control.Monad.Spawn
 import Control.Monad.State
@@ -87,10 +89,13 @@ Applicative m => Zippable (Coop m) where
   unzipWith f ab = (fst . f <$> ab, snd . f <$> ab)
   unzipWith3 f abc = (fst . f <$> abc, fst . snd . f <$> abc, snd . snd . f <$> abc)
 
-export
-[Concurrent] Applicative m => Applicative (Coop m) where
+[Conc] Applicative m => Applicative (Coop m) where
   pure  = Point . pure
   (<*>) = zipWith apply
+
+export
+Applicative m => ConcurrentApplicative (Coop m) where
+  Concurrent = Conc
 
 export
 Timed m => Applicative m => CanSleep (Coop m) where

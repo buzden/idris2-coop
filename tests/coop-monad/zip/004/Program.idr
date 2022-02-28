@@ -15,7 +15,7 @@ beforeString : String
 beforeString = "before coop, delays: \{show delays}"
 
 export
-program : PrintString m => Timed m => Coop m Unit -- Coop here because of `Concurrent` applicative instance usage below
+program : PrintString m => CanSleep m => ConcurrentApplicative m => m Unit
 program = do
   offset <- currentTime
   printTime offset "===== usual applicative"
