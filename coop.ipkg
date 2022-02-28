@@ -3,6 +3,7 @@ package coop
 authors = "Denis Buzdalov"
 
 modules = Data.Queue1
+        , Control.Applicative.Concurrent
         , Control.Monad.Coop
         , Control.Monad.Coop.Sync
         , Control.Monad.Spawn
