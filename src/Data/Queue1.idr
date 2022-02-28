@@ -43,4 +43,8 @@ Functor Queue1 where
 
 export
 filter : (a -> Bool) -> Queue1 a -> Maybe $ Queue1 a
-filter f $ MkQueue r l = MkQueue (filterSL f r) <$> (fromList $ filter f $ toList l)
+filter f $ MkQueue r l = do
+  let filteredR = filterSL f r
+  let Just filteredL = fromList $ filter f $ toList l
+    | Nothing => MkQueue [<] <$> fromList (cast filteredR)
+  Just $ MkQueue filteredR filteredL
