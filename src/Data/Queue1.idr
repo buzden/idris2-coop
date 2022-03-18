@@ -47,3 +47,8 @@ filter f $ MkQueue r l = do
   let Just filteredL = fromList $ filter f $ toList l
     | Nothing => pureLeftsFromSnoc filteredR
   Just $ MkQueue filteredR filteredL
+
+||| Returns a `List1` with newly added elements on the right and older elements in the left
+export
+toList1 : Queue1 a -> List1 a
+toList1 $ MkQueue r l = l `appendl` cast r
