@@ -6,12 +6,6 @@ import Data.SnocList
 
 %default total
 
---- `SnocList` utility ---
-
-filterSL : (a -> Bool) -> SnocList a -> SnocList a
-filterSL f [<]     = [<]
-filterSL f (xs:<x) = let rest = filterSL f xs in if f x then rest :< x else rest
-
 -------------
 --- Queue ---
 -------------
@@ -31,10 +25,15 @@ export
 add : a -> Queue1 a -> Queue1 a
 add x = { right $= (:< x) }
 
+-- Constructs a `Queue1` which has all elements in the left part of the queue reverted
+%inline
+pureLeftsFromSnoc : SnocList a -> Maybe $ Queue1 a
+pureLeftsFromSnoc = map (MkQueue [<]) . fromList . cast
+
 export
 remove : Queue1 a -> (a, Lazy (Maybe $ Queue1 a))
 remove $ MkQueue r (head ::: l) = (head,) $ delay $ case l of
-  []      => MkQueue [<] <$> fromList (cast r)
+  []      => pureLeftsFromSnoc r
   (x::xs) => Just $ MkQueue r (x:::xs)
 
 export
@@ -43,4 +42,13 @@ Functor Queue1 where
 
 export
 filter : (a -> Bool) -> Queue1 a -> Maybe $ Queue1 a
-filter f $ MkQueue r l = MkQueue (filterSL f r) <$> (fromList $ filter f $ toList l)
+filter f $ MkQueue r l = do
+  let filteredR = filter f r
+  let Just filteredL = fromList $ filter f $ toList l
+    | Nothing => pureLeftsFromSnoc filteredR
+  Just $ MkQueue filteredR filteredL
+
+||| Returns a `List1` with newly added elements on the right and older elements in the left
+export
+toList1 : Queue1 a -> List1 a
+toList1 $ MkQueue r l = l `appendl` cast r
