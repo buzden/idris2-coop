@@ -276,7 +276,8 @@ runCoop co = do
                   t m Unit
   runLeftEvents =
     whenJust (earliestEvent !get) $ \(currEv, restEvs) => do
-      if !(lift currentTime) >= currEv.time
-        then put restEvs *> runEvent currEv
+      currTime <- lift currentTime
+      if currTime >= currEv.time
+        then put restEvs *> runEvent ({time := currTime} currEv)
         else lift $ sleepTill currEv.time -- TODO to support and perform permanent tasks
       runLeftEvents
