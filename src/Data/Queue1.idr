@@ -6,12 +6,6 @@ import Data.SnocList
 
 %default total
 
---- `SnocList` utility ---
-
-filterSL : (a -> Bool) -> SnocList a -> SnocList a
-filterSL f [<]     = [<]
-filterSL f (xs:<x) = let rest = filterSL f xs in if f x then rest :< x else rest
-
 -------------
 --- Queue ---
 -------------
@@ -49,7 +43,7 @@ Functor Queue1 where
 export
 filter : (a -> Bool) -> Queue1 a -> Maybe $ Queue1 a
 filter f $ MkQueue r l = do
-  let filteredR = filterSL f r
+  let filteredR = filter f r
   let Just filteredL = fromList $ filter f $ toList l
     | Nothing => pureLeftsFromSnoc filteredR
   Just $ MkQueue filteredR filteredL
