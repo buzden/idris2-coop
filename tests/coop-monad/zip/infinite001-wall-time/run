@@ -13,8 +13,8 @@ setsid -w setsid -w bash -c \
 
 # Processes may be interleaved, but the rest should be not.
 # Also, we may need to erase or round printed time stamps.
-grep -v 'proc 2' temp | head -n $VALUES_TO_CHECK1 | sed 's/[0-4][0-9]]/00]/' | sed 's/[5-9][0-9]]/50]/' | sed 's/ [0-9]]/ 0]/'
-grep -v 'proc 1' temp | head -n $VALUES_TO_CHECK2 | sed 's/[0-4][0-9]]/00]/' | sed 's/[5-9][0-9]]/50]/' | sed 's/ [0-9]]/ 0]/'
+grep -v 'proc 2' temp | head -n $VALUES_TO_CHECK1 | sed 's/[0-4][0-9]]/00]/' | sed 's/[5-9][0-9]]/50]/' | sed 's/ 0*[0-9]]/ 0]/'
+grep -v 'proc 1' temp | head -n $VALUES_TO_CHECK2 | sed 's/[0-4][0-9]]/00]/' | sed 's/[5-9][0-9]]/50]/' | sed 's/ 0*[0-9]]/ 0]/'
 rm -r temp
 
 rm -rf build
