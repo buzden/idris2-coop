@@ -1,0 +1,13 @@
+before coop
+[time: 0] start
+[time: 0]                      proc 2, one
+[time: 0] proc 1, one
+[time: 0]                      proc 2, another
+[time: 0] proc 1, another
+[time: 0]                      proc 2, one
+[time: 0] proc 1, one
+[time: 0]                      proc 2, another
+[time: 0] proc 1, another
+... cut ...
+[time: 1000] end
+after coop

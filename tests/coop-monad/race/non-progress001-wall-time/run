@@ -1,0 +1,16 @@
+rm -rf build
+
+FIRST_LINES=10
+LAST_LINES=2 # I cannot check more because I don't know the phase of printing, it can be any
+
+$1 --exec main --no-color --console-width 0 --no-banner --find-ipkg WallTimeFinite.idr \
+  | sed 's/[0-4][0-9]]/00]/' | sed 's/[5-9][0-9]]/50]/' | sed 's/ 0*[0-9]]/ 0]/' \
+  > temp
+
+head -n "$FIRST_LINES" temp
+echo "... cut ..."
+tail -n "$LAST_LINES" temp
+
+rm -f temp
+
+rm -rf build
