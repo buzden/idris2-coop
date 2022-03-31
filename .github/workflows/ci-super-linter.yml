@@ -27,8 +27,7 @@ jobs:
       - name: Lint Code Base
         uses: github/super-linter/slim@v4
         env:
-          VALIDATE_ALL_CODEBASE: false
           DEFAULT_BRANCH: master
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           IGNORE_GENERATED_FILES: true
-          VALIDATE_JSCPD: false # disables because of symlink bug https://github.com/kucherenko/jscpd/issues/481
+          VALIDATE_JSCPD_ALL_CODEBASE: true
