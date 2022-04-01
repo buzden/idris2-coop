@@ -64,8 +64,8 @@ Applicative m => Applicative (Coop m) where
   -- We have a special name instance `Concurrent` below for that case.
 
 export
-race : Coop m a -> Coop m a -> Coop m a
-race = Racing
+race : Applicative m => Coop m a -> Coop m b -> Coop m $ Either a b
+race l r = Racing (l <&> Left) (r <&> Right)
 
 export
 Applicative m => Alternative (Coop m) where
