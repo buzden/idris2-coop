@@ -2,28 +2,27 @@ module Program
 
 import CommonTestingStuff
 
-export
-beforeString : String
-beforeString = "before coop"
+delays : List FinDuration
+delays = [250.millis, 600.millis, 0.seconds, 1.seconds, 4.seconds]
+
+p : PrintString m => CanSleep m => Time -> FinDuration -> m Unit
+p offset d = do
+  sleepFor d
+  printTime offset "after waiting for \{show d}"
 
 export
-program : PrintString m => CanSleep m => Zippable m => m ()
+beforeString : String
+beforeString = "before coop, delays: \{show delays}"
+
+export
+program : PrintString m => CanSleep m => ConcurrentApplicative m => m Unit
 program = do
   offset <- currentTime
-  printTime offset "start"
-  res <- zipWith (++)
-    (for [1, 2, 3, 4, 5] $ \i => do
-      printTime offset "proc 1, before 1000, \{show i}"
-      sleepFor 1.seconds
-      printTime offset "proc 1, before 2000, \{show i}"
-      sleepFor 2.seconds
-      pure $ the Int $ i * 10)
-    (for [10, 20, 30, 40, 50, 60, 70, 80, 90, 95] $ \i => do
-      printTime offset "                                proc 2, before 350, \{show i}"
-      sleepFor 350.millis
-      printTime offset "                                proc 2, before 750, \{show i}"
-      sleepFor 750.millis
-      pure $ the Int $ i * 10)
-  printTime offset $ "res: " ++ show res
-  sleepFor 1.seconds
-  printTime offset "end"
+  printTime offset "===== usual applicative"
+  for_ delays $ p offset
+  printTime offset "==== end"
+
+  offset <- currentTime
+  printTime offset "==== parallel applicative"
+  for_ delays @{Concurrent} $ p offset
+  printTime offset "==== end"
