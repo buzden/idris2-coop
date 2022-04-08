@@ -39,8 +39,6 @@ before coop
 [time: 3300]                          s55 proc 2, before 350
 [time: 3300]                          s55 proc 1, before 350
 [time: 3500]                                                s35 proc 3, last
-[time: 3500]                                                s35 proc 2, last
-[time: 3500]                                                s35 proc 1, last
 [time: 3500] top: short, var #3
 [time: 3500] end
 after coop
