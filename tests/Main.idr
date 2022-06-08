@@ -14,4 +14,5 @@ main = runner
   , !( "Concurrent execution with race"                 `atDir` "coop-monad/race"     )
   , !( "Spawning"                                       `atDir` "coop-monad/spawn"    )
   , !( "Empty computation"                              `atDir` "coop-monad/empty"    )
+  , !( "Documentation"                                  `atDir` "docs"                )
   ]
