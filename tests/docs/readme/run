@@ -1,5 +1,15 @@
 rm -rf build
 
-$1 --no-color --console-width 0 --no-banner --find-ipkg --check README.md
+$1 --no-color --console-width 0 --no-banner --find-ipkg --check README.md && \
+  grep '^main.* : IO Unit$' README.md | sed 's/ : IO Unit//' | while read main; do
+    echo "---------------------------------------"
+    echo "--- Running "'`'"$main"'`'
+    echo "---------------------------------------"
+    if [ -f "input_$main" ]; then
+      $1 --no-color --console-width 0 --no-banner --find-ipkg --exec "$main" README.md < "input_$main"
+    else
+      $1 --no-color --console-width 0 --no-banner --find-ipkg --exec "$main" README.md
+    fi
+  done
 
 rm -rf build

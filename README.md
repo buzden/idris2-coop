@@ -8,6 +8,9 @@ import Data.Vect
 import Control.Monad.State
 import Control.Monad.Writer
 
+import ModelTimeRunner
+import ShowTime
+
 %default total
 -->
 
@@ -86,6 +89,12 @@ hello = do
   lift $ putStrLn "Hello, \{name}"
 ```
 
+<!-- idris
+covering
+main_hello1 : IO Unit
+main_hello1 = runCoop hello
+-->
+
 By the way, in some cases `Coop` implements particular interfaces.
 For example, when outer monad in known to be just `IO`, no manual lifting of `HasIO` operations required:
 
@@ -96,6 +105,12 @@ hello' = do
   name <- getLine
   putStrLn "Hello, \{name}"
 ```
+
+<!-- idris
+covering
+main_hello2 : IO Unit
+main_hello2 = runCoop hello'
+-->
 
 Of course, outer monad is not required to be `IO`-related:
 
@@ -110,6 +125,28 @@ incAndTell = do
 
 ### Sleep for some time
 
+<!-- idris
+covering
+runTickShort : (forall m. Timed m => Applicative m => FinDuration -> Nat -> Coop m Unit -> Coop m Unit) -> IO Unit
+runTickShort tick = runCoop $ do
+  start <- currentTime
+  tick 200.millis 3 $ do
+    putStrLn "Short start: \{show $ the FinDuration $ !currentTime - start}"
+    sleepFor 100.millis
+    putStrLn "Short finish: \{show $ the FinDuration $ !currentTime - start}"
+
+covering
+runTickLong : (forall m. Timed m => Applicative m => FinDuration -> Nat -> Coop m Unit -> Coop m Unit) -> IO Unit
+runTickLong tick = runCoop $ do
+  start <- currentTime
+  tick 200.millis 3 $ do
+    putStrLn "Long start: \{show $ the FinDuration $ !currentTime - start}"
+    sleepFor 100.millis
+    putStrLn "Long mid   : \{show $ the FinDuration $ !currentTime - start}"
+    sleepFor 250.millis
+    putStrLn "Long finish : \{show $ the FinDuration $ !currentTime - start}"
+-->
+
 Logical thread may need to sleep for some time.
 For this, `Coop` implements the `CanSleep` interface that has functions `sleepFor` and `sleepTill`.
 The current time can be acquired with the `currentTime` function of the `Timed` interface.
@@ -122,6 +159,16 @@ tickNF : Timed m => Applicative m => FinDuration -> Nat -> Coop m Unit -> Coop m
 tickNF _ Z     _      = pure ()
 tickNF d (S n) action = action >> sleepFor d >> tickNF d n action
 ```
+
+<!-- idris
+covering
+main_tickNF_short : IO Unit
+main_tickNF_short = runTickShort tickNF
+
+covering
+main_tickNF_long : IO Unit
+main_tickNF_long = runTickLong tickNF
+-->
 
 Sleeping functions try to wake up as early as possible after the desired time interval is reached.
 Consider that `action` in the function below takes more time than desired delay.
@@ -136,6 +183,16 @@ tickNT d (S n) action = do
   sleepTill $ t + d
   tickNT d n action
 ```
+
+<!-- idris
+covering
+main_tickNT_short : IO Unit
+main_tickNT_short = runTickShort tickNT
+
+covering
+main_tickNT_long : IO Unit
+main_tickNT_long = runTickLong tickNT
+-->
 
 Quiz! Do you feel the difference between these functions? ;-)
 <details><summary>See my answer</summary>
@@ -201,6 +258,12 @@ resZip = ([0.millis, 700.millis, 1400.millis]
         , [0.millis, 300.millis, 600.millis, 900.millis, 1200.millis])
 ```
 
+<!-- idris
+covering
+main_zip : IO Unit
+main_zip = putStrLn $ show $ execM concurrentZipRun == Just resZip
+-->
+
 Unfortunately, the statement above is not very precise when you run this in `IO`,
 because the times could be a little bit bigger due to some jitter and overhead of execution.
 *By the way, this file is a runnable Idris module and we test that function above gives the expected result.
@@ -221,6 +284,12 @@ The right one finishes after 1500 milliseconds, when the left one finished after
 because there is a sleep after each of computation step.
 
 </details>
+
+<!-- idris
+covering
+main_zip_quiz : IO Unit
+main_zip_quiz = putStrLn $ show $ execM quizZip == Just 2100.millis
+-->
 
 #### Concurrent run with special `Applicative`
 
@@ -256,6 +325,12 @@ resTraverse = [ [0.millis, 120.millis, 240.millis ]
 
 </details>
 
+<!-- idris
+covering
+main_traverse : IO Unit
+main_traverse = putStrLn $ show $ execM concurrentRunTraverse == Just resTraverse
+-->
+
 ### Spawn new parallel computation
 
 Sometimes we need to have a concurrent computation which result we don't need and
@@ -288,6 +363,12 @@ When you run `use` computation, you get `"got 15"` printed in 2 seconds,
 then after 3 seconds `"after 5 seconds"` string is printed and
 after 1 more second `"use finish"` is printed.
 
+<!-- idris
+covering
+main_use_spawn : IO Unit
+main_use_spawn = runCoop use
+-->
+
 Consider one more ticking function.
 ```idris
 tickNS : Timed m => Applicative m => FinDuration -> Nat -> Coop m Unit -> Coop m Unit
@@ -296,6 +377,16 @@ tickNS d (S n) action = do
   spawn $ sleepFor d >> tickNS d n action
   action
 ```
+
+<!-- idris
+covering
+main_tickNS_short : IO Unit
+main_tickNS_short = runTickShort tickNS
+
+covering
+main_tickNS_long : IO Unit
+main_tickNS_long = runTickLong tickNS
+-->
 
 It spawns the computation that will continue ticking and after that it invokes the action.
 Ticking will continue even after the first action is completed.
@@ -339,6 +430,12 @@ That is, all in all, the following strings would be printed:
 `"one starts"`, `"other starts"`, `"one intermediate"` and `"other finishes"`.
 The string `"one finishes"` would not be printed because this local thread would be stopped as soon as the other local thread completes.
 
+<!-- idris
+covering
+main_raceTwo : IO Unit
+main_raceTwo = runCoop $ ignore raceTwo
+-->
+
 Would you like to see yet another ticker function? ;-)
 Here it is:
 
@@ -351,6 +448,16 @@ tickNR d (S n) action = do
   sleepTill $ startTime + d
   tickNR d n action
 ```
+
+<!-- idris
+covering
+main_tickNR_short : IO Unit
+main_tickNR_short = runTickShort tickNR
+
+covering
+main_tickNR_long : IO Unit
+main_tickNR_long = runTickLong tickNR
+-->
 
 Quiz! What are the similarities and differences between `tickNR` and previously defined ticker functions?
 <details><summary>See my answer</summary>
