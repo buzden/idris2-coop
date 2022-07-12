@@ -1,7 +1,7 @@
 rm -rf build
 
 # More or less arbitrary values
-SECONDS_TO_RUN=5
+SECONDS_TO_RUN=10
 VALUES_TO_CHECK=60
 
 # Run the test program for certain amount of time
