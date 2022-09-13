@@ -2,6 +2,8 @@ package coop
 
 authors = "Denis Buzdalov"
 
+brief = "A library for simple concurrency without parallelism"
+
 modules = Data.Queue1
         , Control.Applicative.Concurrent
         , Control.Monad.Coop
