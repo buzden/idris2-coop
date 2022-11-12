@@ -1,5 +1,6 @@
 rm -rf build
 
+pack -q install-deps test.ipkg && \
 $1 --no-color --console-width 0 --no-banner --find-ipkg --check README.md && \
   grep '^main.* : IO Unit$' README.md | sed 's/ : IO Unit//' | while read main; do
     echo "---------------------------------------"

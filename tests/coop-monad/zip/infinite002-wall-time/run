@@ -4,6 +4,8 @@ rm -rf build
 SECONDS_TO_RUN=10
 VALUES_TO_CHECK=60
 
+pack -q install-deps test.ipkg # `pack` is called separately to avoid accounding its time of execution in `SECONDS_TO_RUN`
+
 # Run the test program for certain amount of time
 # To do so and to kill ALL and ONLY THOSE processes that are created after the `idris2 --exec` call, we need
 # to create a new process group (using double `setsid`) and then killing the whole group (using `kill 0`).

@@ -1,0 +1,20 @@
+#!/bin/sh
+
+if [ "$1" != "pre" -a "$1" != "post" ]; then exit 1; fi
+
+output="BaseDir.idr"
+
+echo "module BaseDir" > $output
+echo >> $output
+echo "import Test.Golden.RunnerHelper" >> $output
+echo >> $output
+echo "export" >> $output
+echo "BaseTestsDir where" >> $output
+
+echo -n "  baseTestsDir = " >> $output
+
+if [ "$1" = "pre" ]; then
+  echo "\"$(pwd)\"" >> $output
+else
+  echo "?base_tests_dir" >> $output
+fi

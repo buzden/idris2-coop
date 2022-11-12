@@ -3,7 +3,12 @@ package coop-tests
 authors = "Denis Buzdalov"
 version = 0.0.1
 
-main = Main
+modules = BaseDir
+
+main = Runner
 executable = runtests
 
-depends = contrib, test
+prebuild  = "sh buildhook pre"
+postbuild = "sh buildhook post"
+
+depends = golden-runner-helper
