@@ -4,8 +4,8 @@ import BaseDir
 
 import Test.Golden.RunnerHelper
 
-CmdUnderTest where
-  cmdUnderTest = baseTestsDir ++ "/.pack_lock"
+RunScriptArg where
+  runScriptArg = baseTestsDir ++ "/.pack_lock"
 
 main : IO ()
 main = goldenRunner
