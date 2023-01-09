@@ -23,11 +23,12 @@ indent_size = 2
 indent_style = space
 indent_size = 2
 
-[*.sh]
+[{*.sh,buildhook}]
 indent_style = space
-indent_size = 4
+indent_size = 2
 shell_variant = posix
 switch_case_indent = true
+space_redirects = true
 
 [{Makefile,*.mk}]
 indent_style = tab
