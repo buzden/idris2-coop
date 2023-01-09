@@ -7,6 +7,7 @@ SKIP_PATTERNS_FILE="program/skip-in-output"
 
 # Test dirs must be physically different directories to be able to be run in parallel
 
+flock "$1" pack -q install-deps test.ipkg
 rm -f program && ln -s "../$TEST_NUM" program && \
 pack -q exec WallTimeFinite.idr \
   | sed 's/[0-4][0-9]]/00]/' | sed 's/[5-9][0-9]]/50]/' | sed 's/ 0*[0-9]]/ 0]/' \

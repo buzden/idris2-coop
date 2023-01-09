@@ -7,6 +7,7 @@ SKIP_PATTERNS_FILE="program/skip-in-output"
 
 # Test dirs must be physically different directories to be able to be run in parallel
 
+flock "$1" pack -q install-deps test.ipkg
 rm -f program && ln -s "../$TEST_NUM" program && \
 pack -q exec StateTTime.idr \
   | if [ -f "$SKIP_PATTERNS_FILE" -a -r "$SKIP_PATTERNS_FILE" ]; then grep -vf "$SKIP_PATTERNS_FILE"; else cat; fi
