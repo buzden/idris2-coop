@@ -41,7 +41,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: pack-state
-          path: ${PACK_DIR}
+          path: ${{ env.PACK_DIR }}
 
   build:
     name: Build `coop`
@@ -55,14 +55,14 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: pack-state
-          path: ${PACK_DIR}
+          path: ${{ env.PACK_DIR }}
       - name: Build `coop`
         run: pack build coop
       - name: Save `pack` state
         uses: actions/upload-artifact@v3
         with:
           name: pack-state
-          path: ${PACK_DIR}
+          path: ${{ env.PACK_DIR }}
 
   test:
     name: Test `coop`
@@ -76,6 +76,6 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: pack-state
-          path: ${PACK_DIR}
+          path: ${{ env.PACK_DIR }}
       - name: Test `coop`
         run: pack test coop
