@@ -28,8 +28,8 @@ env:
 
 jobs:
 
-  select-pack-collection:
-    name: Select `pack` collection
+  build-and-test:
+    name: Build and test `coop`
     runs-on: ubuntu-latest
     container: ghcr.io/stefan-hoeck/idris2-pack:latest
     steps:
@@ -37,45 +37,7 @@ jobs:
         uses: actions/checkout@v3
       - name: Switch to appropriate `pack` collection
         run: pack switch "$( if [[ '${{ github.event_name }}' == 'schedule' ]]; then echo latest; else cat .pack-collection; fi )"
-      - name: Save `pack` state
-        uses: actions/upload-artifact@v3
-        with:
-          name: pack-state
-          path: ${{ env.PACK_DIR }}/install
-
-  build:
-    name: Build `coop`
-    runs-on: ubuntu-latest
-    container: ghcr.io/stefan-hoeck/idris2-pack:latest
-    needs: select-pack-collection
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-      - name: Restore `pack` state
-        uses: actions/download-artifact@v3
-        with:
-          name: pack-state
-          path: ${{ env.PACK_DIR }}/install
       - name: Build `coop`
         run: pack build coop
-      - name: Save `pack` state
-        uses: actions/upload-artifact@v3
-        with:
-          name: pack-state
-          path: ${{ env.PACK_DIR }}/install
-
-  test:
-    name: Test `coop`
-    runs-on: ubuntu-latest
-    container: ghcr.io/stefan-hoeck/idris2-pack:latest
-    needs: build
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-      - name: Restore `pack` state
-        uses: actions/download-artifact@v3
-        with:
-          name: pack-state
-          path: ${{ env.PACK_DIR }}/install
       - name: Test `coop`
         run: pack test coop
