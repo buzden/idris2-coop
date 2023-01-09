@@ -7,8 +7,9 @@ SKIP_PATTERNS_FILE="program/skip-in-output"
 
 # Test dirs must be physically different directories to be able to be run in parallel
 
-flock "$1" pack -q install-deps test.ipkg
+# `test.ipkg` is available only when `program` link is set, thus any call to `pack` is after.
 rm -f program && ln -s "../$TEST_NUM" program && \
+flock "$1" pack -q install-deps test.ipkg && \
 pack -q exec WallTimeFinite.idr \
   | sed 's/[0-4][0-9]]/00]/' | sed 's/[5-9][0-9]]/50]/' | sed 's/ 0*[0-9]]/ 0]/' \
   | if [ -f "$SKIP_PATTERNS_FILE" -a -r "$SKIP_PATTERNS_FILE" ]; then grep -vf "$SKIP_PATTERNS_FILE"; else cat; fi
