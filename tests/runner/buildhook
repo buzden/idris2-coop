@@ -2,7 +2,7 @@
 
 if [ "$1" != "pre" -a "$1" != "post" ]; then exit 1; fi
 
-output="BaseDir.idr"
+output="$(dirname "$0")/BaseDir.idr"
 
 echo "module BaseDir" > $output
 echo >> $output

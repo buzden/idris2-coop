@@ -1,5 +1,6 @@
 rm -rf build
 
+flock "$1" pack -q install-deps test.ipkg
 pack -q exec StateTTime.idr
 
 rm -rf build

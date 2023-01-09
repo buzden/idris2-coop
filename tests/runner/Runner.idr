@@ -4,6 +4,9 @@ import BaseDir
 
 import Test.Golden.RunnerHelper
 
+CmdUnderTest where
+  cmdUnderTest = baseTestsDir ++ "/.pack_lock"
+
 main : IO ()
 main = goldenRunner
   [ "Sequential execution"                           `atDir` "coop-monad/seq"
