@@ -12,6 +12,10 @@ on:
       - main
       - master
 
+concurrency:
+￼ group: ${{ github.ref }}
+￼ cancel-in-progress: true
+
 jobs:
   build:
     name: Lint Code Base

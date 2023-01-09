@@ -17,41 +17,63 @@ on:
     # https://github.com/alexhumphreys/idris2-dockerfile/blob/main/.github/workflows/docker-image.yml
     - cron: '0 1 * * *'
 
+concurrency:
+￼ group: ${{ github.ref }}
+￼ cancel-in-progress: true
+
 defaults:
+  container: ghcr.io/stefan-hoeck/idris2-pack:latest
+  runs-on: ubuntu-latest
   run:
     shell: bash
 
+env:
+  PACK_DIR: /root/.pack
+
 jobs:
 
-  read-ver:
-    name: Aquire compiler version
-    runs-on: ubuntu-latest
-    env:
-      IDRIS_VERSION_FILE: .idris-version
-    outputs:
-      idris-ver: ${{ steps.read-ver.outputs.idris-ver }}
+  select-pack-collection:
+    name: Select `pack` collection
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-      - name: Read the version
-        id: read-ver
-        run: sed 's/^/::set-output name=idris-ver::/' < "${IDRIS_VERSION_FILE}"
+      - name: Switch to appropriate `pack` collection
+        run:  pack switch "$( [[ '${{ github.event_name }}' == 'schedule' ]] && echo latest || cat .pack-collection )"
+      - name: Save `pack` state
+        uses: actions/upload-artifact@v3
+        with:
+          name: pack-state
+          path: ${PACK_DIR}
 
   build:
-    name: Build and test `coop`
-    needs: read-ver
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        idris-version: # git describe --tags
-          - ${{ needs.read-ver.outputs.idris-ver }}
-          - latest
-    container: snazzybucket/idris2api:${{ matrix.idris-version }}
+    name: Build `coop`
+    needs: select-pack-collection
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+      - name: Restore `pack` state
+        uses: actions/download-artifact@v3
+        with:
+          name: pack-state
+          path: ${PACK_DIR}
       - name: Build `coop`
-        run: make coop
+        run:  pack build coop
+      - name: Save `pack` state
+        uses: actions/upload-artifact@v3
+        with:
+          name: pack-state
+          path: ${PACK_DIR}
+
+  test:
+    name: Test `coop`
+    needs: build
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Restore `pack` state
+        uses: actions/download-artifact@v3
+        with:
+          name: pack-state
+          path: ${PACK_DIR}
       - name: Test `coop`
-        run: make test-coop
+        run:  pack test coop
