@@ -1,3 +1,4 @@
+---
 name: Lint
 
 on:
@@ -13,8 +14,8 @@ on:
       - master
 
 concurrency:
-￼ group: ${{ github.ref }}
-￼ cancel-in-progress: true
+  group: ${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -23,9 +24,10 @@ jobs:
     steps:
 
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
-          # Full git history is needed to get a proper list of changed files within `super-linter`
+          # Full git history is needed to get a proper
+          # list of changed files within `super-linter`
           fetch-depth: 0
 
       - name: Lint Code Base
