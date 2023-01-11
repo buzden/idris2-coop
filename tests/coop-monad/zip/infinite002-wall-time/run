@@ -4,11 +4,13 @@ rm -rf build
 SECONDS_TO_RUN=10
 VALUES_TO_CHECK=60
 
+flock "$1" pack -q install-deps test.ipkg # `pack` is called separately to avoid accounding its time of execution in `SECONDS_TO_RUN`
+
 # Run the test program for certain amount of time
 # To do so and to kill ALL and ONLY THOSE processes that are created after the `idris2 --exec` call, we need
 # to create a new process group (using double `setsid`) and then killing the whole group (using `kill 0`).
 setsid -w setsid -w bash -c \
- "stdbuf -oL $1 --exec main --no-color --console-width 0 --no-banner --find-ipkg WallTimeInfinite.idr > temp & sleep $SECONDS_TO_RUN; kill 0"
+ "stdbuf -oL idris2 --exec main --no-color --console-width 0 --no-banner --find-ipkg WallTimeInfinite.idr > temp & sleep $SECONDS_TO_RUN; kill 0"
 
 # Also, we may need to erase or round printed time stamps.
 cat temp | head -n $VALUES_TO_CHECK | sed 's/[0-4][0-9]]/00]/' | sed 's/[5-9][0-9]]/50]/' | sed 's/ 0*[0-9]]/ 0]/'

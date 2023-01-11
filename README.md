@@ -510,8 +510,12 @@ There are some desired things that I either haven't found time to implement, or 
 
 * Runner not only for `Unit`, rather of type `Coop m a -> m (Maybe a)` (`Maybe` is for the case of `empty` computation)
 
-## Compatibility
+## Installation and compatibility
 
-The Idris 2 compiler version that the library is tested against resides in the [``.idris-version``](/.idris-version) file in the repository.
+If you use [`pack`](https://github.com/stefan-hoeck/idris2-pack/) package manager,
+it is enough to add `coop` to `depends` section of your `.ipkg`-file,
+or to call `pack install coop` to install the library directly.
+
+The latest version of the library is always tested to work at the `pack` collection put in the [``.pack-collection``](/.pack-collection) file.
 Also, we try to stick with the latest bleeding edge compiler version from the ``main`` branch,
-that is why the library is checked nightly against the latest available commit.
+thus the library is tested nightly against the latest available `pack` collection.
