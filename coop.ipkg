@@ -4,6 +4,8 @@ authors = "Denis Buzdalov"
 
 brief = "A library for simple concurrency without parallelism"
 
+license = "Apache-2.0"
+
 modules = Data.Queue1
         , Control.Applicative.Concurrent
         , Control.Monad.Coop
