@@ -15,5 +15,6 @@ modules = Data.Queue1
         , System.Time
 
 depends = contrib
+        , tailrec
 
 sourcedir = "src"

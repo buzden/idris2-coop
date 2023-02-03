@@ -15,6 +15,7 @@ import public Control.Monad.Spawn
 import Control.Monad.State
 import Control.Monad.State.Tuple
 import public Control.Monad.Trans
+import public Control.MonadRec
 
 %default total
 
@@ -262,22 +263,26 @@ runEvent ev = case ev.coop of
       put $ foldl (flip SortedMap.delete) raceSyncs syncsToRemove
 
 export covering
-runCoop : CanSleep m => Monad m => Coop m Unit -> m Unit
+runCoop : MonadRec m => CanSleep m => Coop m Unit -> m Unit
 runCoop co = do
   let initEvents = singleEvent $ Ev !currentTime co Nothing Nothing
       initJoinSyncs : JoinSyncs m = empty
       initRaceSyncs : RaceSyncs = empty
   evalStateT (initEvents, initJoinSyncs, initRaceSyncs) runLeftEvents where
 
-  runLeftEvents : MonadTrans t => Monad (t m) =>
+  covering WellFounded () Equal where wellFounded = wellFounded
+
+  runLeftEvents : MonadTrans t => MonadRec (t m) =>
                   MonadState (Events m) (t m) =>
                   MonadState (JoinSyncs m) (t m) =>
                   MonadState RaceSyncs (t m) =>
                   t m Unit
-  runLeftEvents =
-    whenJust (earliestEvent !get) $ \(currEv, restEvs) => do
-      currTime <- lift currentTime
-      if currTime >= currEv.time
-        then put restEvs *> runEvent ({time := currTime} currEv)
-        else lift $ sleepTill currEv.time -- TODO to support and perform permanent tasks
-      runLeftEvents
+  runLeftEvents = trWellFounded () () $ \(), () => do
+    case earliestEvent !get of
+      Nothing => pure $ Done ()
+      Just (currEv, restEvs) => do
+        currTime <- lift currentTime
+        if currTime >= currEv.time
+          then put restEvs *> runEvent ({time := currTime} currEv)
+          else lift $ sleepTill currEv.time -- TODO to support and perform permanent tasks
+        pure $ Cont () Refl ()

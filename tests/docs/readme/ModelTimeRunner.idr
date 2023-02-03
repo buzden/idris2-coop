@@ -16,6 +16,9 @@ execM c = runST $ evalStateT 0.seconds wrappedToST where
   Monad m => CanSleep (StateT Time m) where
     sleepFor d = modify (+d)
 
+  %hint STMonadRec : MonadRec (ST s)
+  STMonadRec = believe_me $ the (MonadRec IO) %search
+
   wrappedToST : StateT Time (ST st) $ Maybe a
   wrappedToST = do
     ref <- lift $ newSTRef Nothing
