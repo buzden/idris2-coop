@@ -11,10 +11,10 @@ modules = Data.Queue1
         , Control.Monad.Coop
         , Control.Monad.Coop.Sync
         , Control.Monad.Spawn
-        , Control.Monad.State.Tuple
-        , System.Time
 
 depends = contrib
+        , mtl-tuple-impls
         , tailrec
+        , time-for-sleep
 
 sourcedir = "src"
