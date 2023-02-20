@@ -12,8 +12,7 @@ modules = Data.Queue1
         , Control.Monad.Coop.Sync
         , Control.Monad.Spawn
 
-depends = contrib
-        , mtl-tuple-impls
+depends = mtl-tuple-impls
         , tailrec
         , time-for-sleep
 
