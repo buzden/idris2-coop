@@ -45,6 +45,8 @@ s77 no = do
   sleepFor 950.millis
   "mid 2" <$ printTime offset "                                                                      s77 proc \{show no}, last"
 
+%hide Control.Relation.Nil
+
 export
 program : PrintString m => CanSleep m => Zippable m => Alternative m => m Unit
 program = do
