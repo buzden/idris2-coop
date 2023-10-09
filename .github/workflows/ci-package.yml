@@ -32,13 +32,22 @@ jobs:
     name: Build and test `${{ github.repository }}`
     runs-on: ubuntu-latest
     container: ghcr.io/stefan-hoeck/idris2-pack:latest
+    strategy:
+      fail-fast: false
+      matrix:
+        upstream-mode: [latest-pack-collection, bleeding-edge-compiler]
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
-      - name: Update `pack`'s database
+        uses: actions/checkout@v4
+      - name: Update `pack-db`
         run: pack update-db
-      - name: Switch to appropriate `pack` collection
-        run: pack switch "$( if [[ '${{ github.event_name }}' == 'schedule' ]]; then echo latest; else cat .pack-collection; fi )"
+      - name: Switch to the latest compiler, if needed
+        if: ${{ matrix.upstream-mode == 'bleeding-edge-compiler' }}
+        run: |
+          { echo; echo "[idris2]"; echo 'commit = "latest:main"'; } >> pack.toml
+          pack fetch
+      - name: Switch to the latest collection
+        run: pack switch latest
       - name: Compute the package name
         run: echo "package_name=$(sed -e 's|.*/||' -e 's/idris2\?-//' <<< ${{ github.repository }})" >> "$GITHUB_ENV"
       - name: Build `${{ env.package_name }}`
