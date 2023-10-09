@@ -130,6 +130,10 @@ export
 MonadTrans Coop where
   lift = Point
 
+export covering
+forever : Monad m => m a -> m b
+forever x = ignore x >> forever x
+
 -------------------
 --- Interpreter ---
 -------------------

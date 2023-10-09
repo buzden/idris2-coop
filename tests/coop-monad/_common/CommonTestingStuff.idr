@@ -47,10 +47,6 @@ for : Nat -> Monad m => m a -> m ()
 for Z     _ = pure ()
 for (S n) a = do ignore a; for n a
 
-export covering
-forever : Monad m => m a -> m b
-forever x = do ignore x; forever x
-
 --- `Writer`-related stuff ---
 
 export
