@@ -6,6 +6,9 @@ brief = "A library for simple concurrency without parallelism"
 
 license = "Apache-2.0"
 
+sourcedir = "src"
+builddir = ".build"
+
 modules = Data.Queue1
         , Control.Applicative.Concurrent
         , Control.Monad.Coop
@@ -15,5 +18,3 @@ modules = Data.Queue1
 depends = mtl-tuple-impls
         , tailrec
         , time-for-sleep
-
-sourcedir = "src"
