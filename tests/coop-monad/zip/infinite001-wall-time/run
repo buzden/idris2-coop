@@ -1,7 +1,7 @@
 rm -rf build
 
 # More or less arbitrary values
-SECONDS_TO_RUN=35
+SECONDS_TO_RUN=50
 VALUES_TO_CHECK1=20
 VALUES_TO_CHECK2=50
 
