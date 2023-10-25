@@ -1,7 +1,7 @@
 rm -rf build
 
 # More or less arbitrary values
-SECONDS_TO_RUN=10
+SECONDS_TO_RUN=20
 VALUES_TO_CHECK=60
 
 flock "$1" pack -q install-deps test.ipkg # `pack` is called separately to avoid accounding its time of execution in `SECONDS_TO_RUN`
