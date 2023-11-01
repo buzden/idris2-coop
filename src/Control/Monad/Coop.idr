@@ -79,6 +79,16 @@ export
 Applicative m => Monad (Coop m) where
   (>>=) = Sequential
 
+-- This implementation is like a `NonTailRec` from `MonadRec`,
+-- but this is actually safe, since `>>=` returns immediately,
+-- because the whole `Coop` data structure is lazy on binding.
+export
+Applicative m => MonadRec (Coop m) where
+  tailRecM x (Access acc) st next =
+    next x st `Sequential` \case
+      Cont seed2 prf vst => tailRecM seed2 (acc seed2 prf) vst next
+      Done vres          => Point $ pure vres
+
 export
 Applicative m => Zippable (Coop m) where
   zip = Interleaved
