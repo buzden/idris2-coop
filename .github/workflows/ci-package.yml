@@ -30,14 +30,36 @@ env:
 
 jobs:
 
+  get-upstream-matrix:
+    name: Acquire matrix of upstream modes
+    runs-on: ubuntu-latest
+    container: ghcr.io/stefan-hoeck/idris2-pack:latest
+    outputs:
+      upstream-matrix: "${{ steps.get-upstream-matrix.outputs.upstream-matrix }}"
+    steps:
+      - name: Install Git
+        run: apt-get update && apt-get install git
+      - name: Get upstream matrix
+        id: get-upstream-matrix
+        run: |
+          CURR="$(idris2 --version | sed 's/.*-//')"
+          MAIN="$(git ls-remote https://github.com/idris-lang/Idris2 main | head -c 9)"
+          echo "Current: $CURR, bleeding edge: $MAIN"
+          if [ "$CURR" == "$MAIN" ]; then
+            echo 'upstream-matrix=["latest-pack-collection"]'
+          else
+            echo 'upstream-matrix=["latest-pack-collection", "bleeding-edge-compiler"]'
+          fi >> "$GITHUB_OUTPUT"
+
   build-and-test:
     name: Build and test `${{ github.repository }}`
+    needs: get-upstream-matrix
     runs-on: ubuntu-latest
     container: ghcr.io/stefan-hoeck/idris2-pack:latest
     strategy:
       fail-fast: false
       matrix:
-        upstream-mode: [latest-pack-collection, bleeding-edge-compiler]
+        upstream-mode: ${{ fromJSON(needs.get-upstream-matrix.outputs.upstream-matrix) }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
