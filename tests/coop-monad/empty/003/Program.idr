@@ -53,7 +53,7 @@ program = do
 
   res <- choiceMap
     ( \(comp, n) => choiceMap (\k => comp k <&> (++ ", var #\{show k}")) $ take n [1..n] )
-    [(s150, 1), (s55, 2), (s35, 3), (s77, 0)]
+    [(s150, 1), (s55, 2), (s35, 3), (s77 {m}, 0)]
   printTime offset "top: \{res}"
 
   printTime offset "end"
