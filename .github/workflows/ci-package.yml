@@ -48,7 +48,7 @@ jobs:
           if [ "$CURR" == "$MAIN" ]; then
             echo 'upstream-matrix=["latest-pack-collection"]'
           else
-            echo 'upstream-matrix=["latest-pack-collection", "bleeding-edge-compiler"]'
+            echo 'upstream-matrix=["latest-pack-collection", "bleeding-edge"]'
           fi >> "$GITHUB_OUTPUT"
 
   build-and-test:
@@ -65,17 +65,18 @@ jobs:
         uses: actions/checkout@v4
       - name: Update `pack-db`
         run: pack update-db
+      - name: Compute the package name and desired pack collection
+        run: |
+          { echo "package_name=$(sed -e 's|.*/||' -e 's/idris2\?-//' <<< ${{ github.repository }})"
+            echo "pack_collection=${{ matrix.upstream-mode == 'bleeding-edge' && 'HEAD' || 'latest' }}"
+          } >> "$GITHUB_ENV"
       - name: Switch to the latest compiler, if needed
-        if: ${{ matrix.upstream-mode == 'bleeding-edge-compiler' }}
+        if: ${{ matrix.upstream-mode == 'bleeding-edge' }}
         run: |
           { echo; echo "[idris2]"; echo 'commit = "latest:main"'; } >> pack.toml
           pack fetch
-      - name: Switch to the latest collection
-        run: pack switch latest
-      - name: Compute the package name
-        run: |
-          echo "package_name=$(sed -e 's|.*/||' -e 's/idris2\?-//' \
-                <<< ${{ github.repository }})" >> "$GITHUB_ENV"
+      - name: Switch to the ${{ env.pack_collection }} collection
+        run: pack switch ${{ env.pack_collection }}
       - name: Build `${{ env.package_name }}`
         run: pack build ${{ env.package_name }}
       - name: Test `${{ env.package_name }}`
