@@ -191,7 +191,7 @@ earliestEvent evs = leftMost evs <&> \(t, tEvs) =>
   (currEv,) $ maybe (delete t evs) (\r => insert t r evs) restTEvs
 
 filterEvents : (Event m -> Bool) -> Events m -> Events m
-filterEvents f = fromList . mapMaybe (\(t, evs) => (t,) <$> filter f evs) . SortedMap.toList
+filterEvents f = fromList . mapMaybe (\(t, evs) => (t,) <$> filter f evs) . kvList
 
 --- Join synchronisation stuff ---
 
@@ -216,7 +216,7 @@ transitiveLookup : Foldable f => Ord a => SortedMap a (f a) -> a -> SortedSet a
 transitiveLookup mp x = let x1 = singleton x in go x1 x1 where
   go : (curr : SortedSet a) -> (new : SortedSet a) -> SortedSet a
   go curr new = if null new then curr else do
-    let allNexts = fromList $ SortedSet.toList new >>= maybe [] toList . flip SortedMap.lookup mp
+    let allNexts = fromList $ Prelude.toList new >>= maybe [] toList . lookup' mp
     let nextNew = allNexts `difference` curr
     assert_total $ go (curr `union` nextNew) nextNew -- first argument is growing and has maximum bound (all `a` in the `mp`)
 
@@ -273,8 +273,8 @@ runEvent ev = case ev.coop of
     finishRaces = whenJust ev.raceSync $ \currRaceSync => do
       raceSyncs <- get
       let syncsToRemove = transitiveLookup raceSyncs currRaceSync
-      modify $ filterEvents $ maybe True (not . flip contains syncsToRemove) . raceSync
-      put $ foldl (flip SortedMap.delete) raceSyncs syncsToRemove
+      modify $ filterEvents $ maybe True (not . contains' syncsToRemove) . raceSync
+      put $ foldl SortedMap.delete' raceSyncs syncsToRemove
 
 export covering
 runCoop : MonadRec m => CanSleep m => Coop m Unit -> m Unit
