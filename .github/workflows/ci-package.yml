@@ -7,77 +7,16 @@ on:
       - main
       - master
     tags:
-      - '**'
+      - "**"
   pull_request:
     branches:
       - main
       - master
   schedule:
-    - cron: '0 1 * * *'
+    - cron: "0 1 * * *"
 
 permissions: read-all
 
-concurrency:
-  group: ${{ github.workflow }}@${{ github.ref }}
-  cancel-in-progress: true
-
-defaults:
-  run:
-    shell: bash
-
-env:
-  PACK_DIR: /root/.pack
-
 jobs:
-
-  get-upstream-matrix:
-    name: Acquire matrix of upstream modes
-    runs-on: ubuntu-latest
-    container: ghcr.io/stefan-hoeck/idris2-pack:latest
-    outputs:
-      upstream-matrix: "${{ steps.get-upstream-matrix.outputs.upstream-matrix }}"
-    steps:
-      - name: Install Git
-        run: apt-get update && apt-get install git
-      - name: Get upstream matrix
-        id: get-upstream-matrix
-        run: |
-          CURR="$(idris2 --version | sed 's/.*-//')"
-          MAIN="$(git ls-remote https://github.com/idris-lang/Idris2 main | head -c 9)"
-          echo "Current: $CURR, bleeding edge: $MAIN"
-          if [ "$CURR" == "$MAIN" ]; then
-            echo 'upstream-matrix=["latest-pack-collection"]'
-          else
-            echo 'upstream-matrix=["latest-pack-collection", "bleeding-edge"]'
-          fi >> "$GITHUB_OUTPUT"
-
   build-and-test:
-    name: Build and test `${{ github.repository }}`
-    needs: get-upstream-matrix
-    runs-on: ubuntu-latest
-    container: ghcr.io/stefan-hoeck/idris2-pack:latest
-    strategy:
-      fail-fast: false
-      matrix:
-        upstream-mode: ${{ fromJSON(needs.get-upstream-matrix.outputs.upstream-matrix) }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Update `pack-db`
-        run: pack update-db
-      - name: Compute the package name and desired pack collection
-        run: |
-          { echo "package_name=$(sed -e 's|.*/||' -e 's/idris2\?-//' <<< ${{ github.repository }})"
-            echo "pack_collection=${{ matrix.upstream-mode == 'bleeding-edge' && 'HEAD' || 'latest' }}"
-          } >> "$GITHUB_ENV"
-      - name: Switch to the latest compiler, if needed
-        if: ${{ matrix.upstream-mode == 'bleeding-edge' }}
-        run: |
-          { echo; echo "[idris2]"; echo 'commit = "latest:main"'; } >> pack.toml
-          pack fetch
-      - name: Switch to the ${{ env.pack_collection }} collection
-        run: pack switch ${{ env.pack_collection }}
-      - name: Build `${{ env.package_name }}`
-        run: pack build ${{ env.package_name }}
-      - name: Test `${{ env.package_name }}`
-        run: pack test ${{ env.package_name }}
+    uses: DepTyCheck/idris2-actions/.github/workflows/build-and-test.yml@v1

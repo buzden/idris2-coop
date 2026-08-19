@@ -12,7 +12,7 @@ when `Alternative` is available:
 016: choice of choices
 017: `(b *> empty) <|> a` with effects of `b` which are before the end of `a`
 018: `(empty *> b) <|> a` without any effects of `b`
-019: `a *> empty *> b` being eqivalent to `a` by side effects (not by the returned result)
+019: `a *> empty *> b` being equivalent to `a` by side effects (not by the returned result)
 020: `zipWith f empty a` is equivalent to `a *> empty`
 021: `zipWith f (a *> empty) b` is equivalent to `zipWith (,) a b *> empty`
 

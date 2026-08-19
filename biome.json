@@ -1,0 +1,14 @@
+{
+  "files": {
+    "includes": ["**", "!!tests"]
+  },
+  "formatter": {
+    "indentStyle": "space",
+    "useEditorconfig": true
+  },
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  }
+}

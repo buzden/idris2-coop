@@ -20,19 +20,19 @@ A library for simple concurrency without parallelism for Idris 2
 
 ## Table of contents
 
-* [On concurrency and terminology](#concurrency)
-* [Supported computations and compositions](#compose-your-computations)
-* [Principles](#principles)
-* [What's bad in design](#known-principle-downsides)
-* [On creation history](#history)
-* [What else I want to be done](#desires)
+- [On concurrency and terminology](#concurrency)
+- [Supported computations and compositions](#compose-your-computations)
+- [Principles](#principles)
+- [What's bad in design](#known-principle-downsides)
+- [On creation history](#history)
+- [What else I want to be done](#desires)
 
 ## Concurrency
 
 ### Terminology
 
-By *concurrency* I mean an ability to declare several logically independent sequential computations, I'll call them *logical threads*.
-By *parallelism* I mean actual execution of some pieces of code physically simultaneously in the terms of wall time.
+By _concurrency_ I mean an ability to declare several logically independent sequential computations, I'll call them _logical threads_.
+By _parallelism_ I mean actual execution of some pieces of code physically simultaneously in the terms of wall time.
 
 This library declares "concurrency without parallelism", which means it allows a way to describe several
 logical threads where each such thread can, say, logically lock for some time or event,
@@ -52,7 +52,7 @@ and represents a bunch of logical threads running in a monad `m`.
 At the end of the day, all logical computations are "run",
 which means they are boiled down into a single computation in a monad `m`.
 
-That's why we say we have concurrency *without parallelism*:
+That's why we say we have concurrency _without parallelism_:
 finally all logical computations form a single sequence in the substrate monad.
 
 This limits effectiveness of final execution but gives simplicity
@@ -67,12 +67,12 @@ we think of computations as of things composed from smaller computations.
 
 ### Supported compositions and basic operations
 
-* [Lifting and sequential composition](#lifting-and-sequential-composition)
-* [Timed delay](#sleep-for-some-time)
-* Concurrent composition
-  * [with acquiring all results](#run-simultaneously-and-merge-results)
-  * [without waiting for finish](#spawn-new-parallel-computation)
-  * [with result of the first finished](#race-between-the-two)
+- [Lifting and sequential composition](#lifting-and-sequential-composition)
+- [Timed delay](#sleep-for-some-time)
+- Concurrent composition
+  - [with acquiring all results](#run-simultaneously-and-merge-results)
+  - [without waiting for finish](#spawn-new-parallel-computation)
+  - [with result of the first finished](#race-between-the-two)
 
 ### Lifting and sequential composition
 
@@ -195,11 +195,12 @@ main_tickNT_long = runTickLong tickNT
 -->
 
 Quiz! Do you feel the difference between these functions? ;-)
+
 <details><summary>See my answer</summary>
 
 In both functions actions are run one after the other,
-but in `tickNF` time between starts of successive action runs is a given delay *plus* the execution time of the first action,
-when in `tickNT` this time is a *maximum* between the given delay and the execution time of the first action.
+but in `tickNF` time between starts of successive action runs is a given delay _plus_ the execution time of the first action,
+when in `tickNT` this time is a _maximum_ between the given delay and the execution time of the first action.
 
 </details>
 
@@ -252,6 +253,7 @@ concurrentZipRun = do
 ```
 
 The result of the execution of this concurrent computation would be equivalent to the expression
+
 ```idris
 resZip : (Vect 3 FinDuration, Vect 5 FinDuration)
 resZip = ([0.millis, 700.millis, 1400.millis]
@@ -266,10 +268,11 @@ main_zip = putStrLn $ show $ execM concurrentZipRun == Just resZip
 
 Unfortunately, the statement above is not very precise when you run this in `IO`,
 because the times could be a little bit bigger due to some jitter and overhead of execution.
-*By the way, this file is a runnable Idris module and we test that function above gives the expected result.
-To not to run into `IO` jitter, we run this function in an overhead-free model time, not in a wall time.*
+_By the way, this file is a runnable Idris module and we test that function above gives the expected result.
+To not to run into `IO` jitter, we run this function in an overhead-free model time, not in a wall time._
 
 Quiz! What do you think would be the result of the following computation?
+
 ```idris
 quizZip : Timed m => Applicative m => Coop m FinDuration
 quizZip = do
@@ -311,6 +314,7 @@ concurrentRunTraverse = do
 ```
 
 Quiz! I hope, you already can say what would be the result of such computation.
+
 <details><summary>See my answer</summary>
 
 It would be the following:
@@ -370,6 +374,7 @@ main_use_spawn = runCoop use
 -->
 
 Consider one more ticking function.
+
 ```idris
 tickNS : Timed m => Applicative m => FinDuration -> Nat -> Coop m Unit -> Coop m Unit
 tickNS _ Z     _      = pure ()
@@ -392,6 +397,7 @@ It spawns the computation that will continue ticking and after that it invokes t
 Ticking will continue even after the first action is completed.
 
 Quiz! What is the difference between `tickNS` and previously defined `tickNF` and `tickNT`?
+
 <details><summary>See my answer</summary>
 
 Unlike the previous ticking functions, `tickNS` allows given actions execute simultaneously if
@@ -460,6 +466,7 @@ main_tickNR_long = runTickLong tickNR
 -->
 
 Quiz! What are the similarities and differences between `tickNR` and previously defined ticker functions?
+
 <details><summary>See my answer</summary>
 
 Like `tickNS`, this function starts actions in particular moments of time, which are independent the time for computation of actions.
@@ -472,24 +479,24 @@ Unlike them all, action is interrupted if its duration is more than the given ti
 
 These are things that I tried to stick to during development and evolution to the library.
 
-* The implementation is, basically, an event loop, so this is an "n to 1" scheduler.
+- The implementation is, basically, an event loop, so this is an "n to 1" scheduler.
   That's why, we say "without parallelism" in the library description.
 
-* We abstract over an underlying monad, for example, `IO` is not obligatory to be under at the end of the day.
-  E.g. can be used for *modelling* time-aware computations when underlying monad is not an `IO`.
+- We abstract over an underlying monad, for example, `IO` is not obligatory to be under at the end of the day.
+  E.g. can be used for _modelling_ time-aware computations when underlying monad is not an `IO`.
 
-* We try to abstract compositions, e.g. every piece of functionality should be put to interfaces.
+- We try to abstract compositions, e.g. every piece of functionality should be put to interfaces.
 
-* We try to be minimalistic (see the history for objective).
+- We try to be minimalistic (see the history for objective).
   Only beautiful things should go inside a library.
 
 ## Known principle downsides
 
 Taken design decision impose some unpleasant things that I have to put up.
 
-* If you block in the underlying monad, the whole (composed) computation would block.
+- If you block in the underlying monad, the whole (composed) computation would block.
 
-* No support for asynchronous execution of computations in the underlying monad.
+- No support for asynchronous execution of computations in the underlying monad.
 
 ## History
 
@@ -501,14 +508,14 @@ I considered it as a simple cooperative multitasking, hence the library name.
 
 There are some desired things that I either haven't found time to implement, or haven't found a way to implement meeting the principles above.
 
-* Some way to talk and synchronise between parallel computations with ability of semantic blocking
+- Some way to talk and synchronise between parallel computations with ability of semantic blocking
 
-* Support for computations that should permanently be performed when idling
+- Support for computations that should permanently be performed when idling
   (I keep in mind synchronous interrogations of input pins in Arduino)
 
-* Resource control and wiping (including when a resource is created in a computation which is in race with some other)
+- Resource control and wiping (including when a resource is created in a computation which is in race with some other)
 
-* Runner not only for `Unit`, rather of type `Coop m a -> m (Maybe a)` (`Maybe` is for the case of `empty` computation)
+- Runner not only for `Unit`, rather of type `Coop m a -> m (Maybe a)` (`Maybe` is for the case of `empty` computation)
 
 ## Installation and compatibility
 
@@ -516,6 +523,6 @@ If you use [`pack`](https://github.com/stefan-hoeck/idris2-pack/) package manage
 it is enough to add `coop` to `depends` section of your `.ipkg`-file,
 or to call `pack install coop` to install the library directly.
 
-The latest version of the library is always tested to work at the `pack` collection put in the [``.pack-collection``](/.pack-collection) file.
-Also, we try to stick with the latest bleeding edge compiler version from the ``main`` branch,
+The latest version of the library is always tested to work at the `pack` collection put in the [`.pack-collection`](/.pack-collection) file.
+Also, we try to stick with the latest bleeding edge compiler version from the `main` branch,
 thus the library is tested nightly against the latest available `pack` collection.

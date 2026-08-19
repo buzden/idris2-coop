@@ -1,4 +1,6 @@
 {
-  "noSymlinks": "true",
+  "threshold": 5,
+  "noSymlinks": true,
+  "ignore": ["**/tests/**"],
   "exitCode": 10
 }

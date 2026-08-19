@@ -7,7 +7,7 @@ on:
       - main
       - master
     tags:
-      - '*'
+      - "*"
   pull_request:
     branches:
       - main
@@ -25,16 +25,16 @@ jobs:
     name: Lint Code Base
     runs-on: ubuntu-latest
     steps:
-
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           # Full git history is needed to get a proper
           # list of changed files within `super-linter`
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Lint Code Base
-        uses: super-linter/super-linter/slim@v6.0.0
+        uses: super-linter/super-linter/slim@v8.7.0
         env:
           DEFAULT_BRANCH: master
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
