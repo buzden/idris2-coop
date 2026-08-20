@@ -2,6 +2,7 @@ module Control.Monad.Coop
 
 import public System.Time
 
+import Data.Either
 import Data.List
 import Data.Queue1
 import Data.SortedMap
@@ -30,7 +31,7 @@ data Coop : (m : Type -> Type) -> (a : Type) -> Type where
   Point       : m a -> Coop m a
   Sequential  : Coop m a -> (a -> Coop m b) -> Coop m b
   Interleaved : Coop m a -> Coop m b -> Coop m (a, b)
-  Racing      : Coop m a -> Coop m a -> Coop m a
+  Racing      : Coop m a -> Coop m b -> Coop m $ Either a b
   RaceFence   : (prevRaceSync : Maybe $ Sync Race) -> Coop m Unit
   DelayedTill : Time -> Coop m Unit
   Spawn       : Coop m Unit -> Coop m Unit
@@ -65,15 +66,15 @@ Applicative m => Applicative (Coop m) where
   -- We have a special name instance `Concurrent` below for that case.
 
 export
-race : Applicative m => Coop m a -> Coop m b -> Coop m $ Either a b
-race l r = Racing (l <&> Left) (r <&> Right)
+race : Coop m a -> Coop m b -> Coop m $ Either a b
+race = Racing
 
 export
 Applicative m => Alternative (Coop m) where
   -- `empty` computation is like an infinite computation (i.e. no computation goes *after* it and its result cannot be analysed),
   -- but in contrast, if it is the only what is left during the execution, computation simply finishes.
   empty = Empty
-  l <|> r = l `Racing` r
+  l <|> r = (l `Racing` r) <&> fromEither
 
 export
 Applicative m => Monad (Coop m) where
@@ -241,14 +242,14 @@ runEvent ev = case ev.coop of
                             {coop := l, joinSync := Just (uniqueSync, Left )}
                             {coop := r, joinSync := Just (uniqueSync, Right)}
     RaceFence prevS => finishRaces *> addEvent ev {coop := f (), raceSync := prevS}
-    Racing Empty r  => addEvent ev {coop := r >>= f}
-    Racing l Empty  => addEvent ev {coop := l >>= f}
+    Racing Empty r  => addEvent ev {coop := r >>= f . Right}
+    Racing l Empty  => addEvent ev {coop := l >>= f . Left}
     Racing l r      => do uniqueSync <- newUniqueSync <$> get
                           modify $ insert uniqueSync [] -- to prevent generation of the same sync
                           whenJust ev.raceSync $ \parent => modify $ merge $ singleton parent [uniqueSync]
                           addEvent2 ev
-                            {coop := l >>= (RaceFence ev.raceSync *>) . f, raceSync := Just uniqueSync}
-                            {coop := r >>= (RaceFence ev.raceSync *>) . f, raceSync := Just uniqueSync}
+                            {coop := l >>= (RaceFence ev.raceSync *>) . f . Left , raceSync := Just uniqueSync}
+                            {coop := r >>= (RaceFence ev.raceSync *>) . f . Right, raceSync := Just uniqueSync}
     Empty           => pure ()
   nonSeqNonPoint   => addEvent ev {coop := nonSeqNonPoint >>= pure}       -- manage as `Sequential _ Point`
 
